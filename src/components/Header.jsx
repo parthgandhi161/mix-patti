@@ -1,18 +1,45 @@
 import { MuteToggle } from './MuteToggle'
+import { FullscreenToggle } from './FullscreenToggle'
 import './Header.css'
 
 /**
- * One consistent header - centred wordmark, mute toggle on the right -
- * shown identically on Home, Mixing, and Result. A real layout row
- * (not floating corners), so the wordmark sits truly centred regardless
- * of the mute button's width: the left column is a same-size spacer.
+ * House-rules hamburger on the left, centred wordmark (hidden on Home,
+ * where the hero title already says it), mute + fullscreen toggles on
+ * the right - shown on every stage the header appears on. Both side
+ * columns are a fixed 88px, enough for two 40px circular buttons, so
+ * the wordmark stays exactly centred no matter which optional buttons
+ * actually render inside them (fullscreen hides itself on unsupported
+ * browsers, and again once already fullscreen). The wordmark itself
+ * always stays mounted - just visibility-hidden on Home - so the grid
+ * always has the same three children in the same order; conditionally
+ * unmounting it would shift the right-side buttons into the centre
+ * track instead.
  */
-export function Header({ muted, onToggleMute }) {
+export function Header({ stage, muted, onToggleMute, onHouseRules, dim }) {
   return (
-    <header className="appHeader">
-      <span className="appHeader__spacer" aria-hidden="true" />
-      <span className="appHeader__word">Mix Patti</span>
-      <MuteToggle muted={muted} onToggle={onToggleMute} />
+    <header className={`appHeader${dim ? ' appHeader--dim' : ''}`}>
+      <div className="appHeader__side appHeader__side--left">
+        <button
+          type="button"
+          className="appHeader__icon"
+          onClick={onHouseRules}
+          aria-label="House rules"
+        >
+          <span aria-hidden="true">☰</span>
+        </button>
+      </div>
+
+      <span
+        className={`appHeader__word ${stage === 'home' ? 'appHeader__word--hidden' : ''}`}
+        aria-hidden={stage === 'home' || undefined}
+      >
+        Mix Patti
+      </span>
+
+      <div className="appHeader__side appHeader__side--right">
+        <FullscreenToggle />
+        <MuteToggle muted={muted} onToggle={onToggleMute} />
+      </div>
     </header>
   )
 }

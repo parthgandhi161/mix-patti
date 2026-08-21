@@ -1,4 +1,4 @@
-.mute {
+.fullscreenToggle {
   width: 40px;
   height: 40px;
   display: grid;
@@ -11,11 +11,11 @@
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
-.mute:hover,
-.mute:focus-visible {
+.fullscreenToggle:hover,
+.fullscreenToggle:focus-visible {
   opacity: 1;
 }
 
-.mute:active {
+.fullscreenToggle:active {
   transform: scale(0.92);
 }

@@ -16,6 +16,8 @@
   --ivory: #fbf1de; /* primary text */
   --lav: #b79ccf; /* secondary text */
   --lav-dim: #8a71a6; /* tertiary / notes */
+  --mixing-bg: #120519; /* mixing stage backdrop - shared with the
+    header (see .appHeader--dim) so the two never drift apart */
 
   /* Two typefaces, on purpose: the wordmark gets one fun display face,
      everything else - headings and body alike - shares a single

@@ -7,6 +7,7 @@
   border-radius: 18px;
   display: grid;
   place-items: center;
+  align-content: center;
   overflow: hidden;
   user-select: none;
 }
@@ -113,6 +114,11 @@
   text-wrap: balance;
   color: var(--ivory);
   text-shadow: 0 2px 18px rgba(244, 198, 74, 0.22);
+}
+
+/* A single long word (no spaces to wrap at) shrinks instead. */
+.card__name--long {
+  font-size: clamp(22px, 8vw, 34px);
 }
 
 /* Small ornamental rule under the name. */

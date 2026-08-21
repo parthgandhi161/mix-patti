@@ -9,7 +9,7 @@ import './Result.css'
  * a twist once, these badges are all you need; full rules stay behind
  * "Show rules".
  */
-export function Result({ variation, onMixAgain, onShowRules, onHouseRules }) {
+export function Result({ variation, onMixAgain, onShowRules }) {
   return (
     <div className="stage result">
       <div className="result__main">
@@ -30,7 +30,11 @@ export function Result({ variation, onMixAgain, onShowRules, onHouseRules }) {
           ))}
         </div>
 
-        <button type="button" className="btn btn--outline" onClick={onShowRules}>
+        <button
+          type="button"
+          className="btn btn--outline result__rules"
+          onClick={onShowRules}
+        >
           Show rules
         </button>
       </div>
@@ -42,14 +46,6 @@ export function Result({ variation, onMixAgain, onShowRules, onHouseRules }) {
           onClick={onMixAgain}
         >
           <span aria-hidden="true">↻</span> Mix again
-        </button>
-        <button
-          type="button"
-          className="btn btn--ghost result__house"
-          onClick={onHouseRules}
-          aria-label="House rules"
-        >
-          <span aria-hidden="true">☰</span>
         </button>
       </footer>
     </div>

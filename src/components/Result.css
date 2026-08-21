@@ -26,8 +26,22 @@
 }
 
 .result__card {
-  width: min(70%, 260px);
+  width: min(78%, 280px);
   flex-shrink: 1;
+  /* A quiet resting-state loop once the card has landed - the shimmer
+     sweep and fade-in are one-shot, so without this the card just sits
+     dead still. Delayed past both so it doesn't fight them. */
+  animation: cardBreathe 5s ease-in-out 500ms infinite;
+}
+
+@keyframes cardBreathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.015);
+  }
 }
 
 /* The whole point of the resting state - a reminder, not a headline -
@@ -46,10 +60,10 @@
 .result__badge {
   display: inline-flex;
   align-items: center;
-  padding: 8px 16px;
+  padding: 6px 13px;
   border-radius: 999px;
   border: 1px solid transparent;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-align: center;
@@ -74,26 +88,23 @@
   border-color: rgba(244, 198, 74, 0.4);
 }
 
-.result__main .btn--outline {
+.result__rules {
   width: auto;
-  min-width: 170px;
+  min-width: 150px;
   margin-top: 2px;
+  font-size: 15px;
+  padding: 11px 20px;
+  min-height: 46px;
 }
 
 .result__foot {
-  display: flex;
-  gap: 10px;
   width: 100%;
   padding-bottom: 10px;
 }
 
 .result__mix {
-  flex: 1;
-}
-
-.result__house {
-  width: 54px;
-  padding: 14px 0;
-  font-size: 19px;
-  flex-shrink: 0;
+  width: 100%;
+  font-size: 15px;
+  padding: 11px 20px;
+  min-height: 46px;
 }

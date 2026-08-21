@@ -3,16 +3,53 @@
   z-index: 20;
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: 88px 1fr 88px;
   align-items: center;
-  /* The shell's own padding already covers the safe area, so this is
-     just breathing room, not another notch offset. */
   padding: 8px 16px;
+  background: transparent;
+  /* Matches .mixing's own backdrop while mixing, so the header stops
+     reading as a separate lighter strip above the dimmed stage. */
+  transition: background 160ms ease;
 }
 
-.appHeader__spacer {
+.appHeader--dim {
+  background: var(--mixing-bg);
+}
+
+.appHeader__side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.appHeader__side--left {
+  justify-content: flex-start;
+}
+
+.appHeader__side--right {
+  justify-content: flex-end;
+}
+
+.appHeader__icon {
   width: 40px;
   height: 40px;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  border-radius: 50%;
+  background: var(--night-3);
+  border: 1px solid var(--line);
+  opacity: 0.75;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.appHeader__icon:hover,
+.appHeader__icon:focus-visible {
+  opacity: 1;
+}
+
+.appHeader__icon:active {
+  transform: scale(0.92);
 }
 
 .appHeader__word {
@@ -25,4 +62,8 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+.appHeader__word--hidden {
+  visibility: hidden;
 }

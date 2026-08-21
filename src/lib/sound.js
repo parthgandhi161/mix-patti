@@ -16,16 +16,32 @@ let ctx = null
 let master = null
 let noiseBuffer = null
 
+// iOS backgrounds (and sometimes fully closes) the AudioContext when the
+// tab/app is hidden, and doesn't reliably wake it back up on its own -
+// without this, sound would need a full page refresh to come back after
+// switching away and returning. Nudge it the moment the app is visible
+// again; the next ensure() call still covers the "closed" case below.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && ctx?.state === 'suspended') {
+      ctx.resume().catch(() => {})
+    }
+  })
+}
+
 /** Lazily create the AudioContext. Must be called from a tap handler. */
 function ensure() {
-  if (!ctx) {
+  if (!ctx || ctx.state === 'closed') {
     const AudioCtx = window.AudioContext || window.webkitAudioContext
     if (!AudioCtx) return null
     ctx = new AudioCtx()
     noiseBuffer = makeNoise(ctx)
+    master = null
   }
-  // Browsers park the context in "suspended" until a gesture resumes it.
-  if (ctx.state === 'suspended') ctx.resume()
+  // Browsers park the context in "suspended" until a gesture resumes it -
+  // this can also happen again after the tab was backgrounded, so it's
+  // checked on every cue, not just the first.
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {})
   if (!master) {
     master = ctx.createGain()
     master.gain.value = 0.9

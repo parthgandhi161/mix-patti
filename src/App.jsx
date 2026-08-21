@@ -28,7 +28,7 @@ const FADE = {
  *     +---------------------- mix again ------------------+
  *
  *   result --Show rules-->  overlay: 'rules'  --close-->  result
- *   result --☰ House------>  overlay: 'house'  --close-->  result
+ *   any stage --☰ header------>  overlay: 'house'  --close-->  result
  *
  * The winning variation is chosen the moment you tap, before the
  * carousel starts, so it can land on it. Mixing itself is left out of
@@ -43,9 +43,9 @@ export default function App() {
   const enterImmersive = useImmersive()
 
   const showChrome = stage !== 'mixing' && !overlay
-  // The header (wordmark + mute) is identical on every stage, including
-  // Mixing - it only steps aside for the rule sheets, which cover the
-  // whole screen anyway.
+  // The header (hamburger + wordmark + mute/fullscreen) is identical on
+  // every stage, including Mixing - it only steps aside for the rule
+  // sheets, which cover the whole screen anyway.
   const showHeader = !overlay
   const showCredit = !overlay
 
@@ -63,7 +63,13 @@ export default function App() {
     <div className="shell">
       {showChrome && <FloatingSuits />}
       {showHeader && (
-        <Header muted={muted} onToggleMute={toggleMuted} />
+        <Header
+          stage={stage}
+          muted={muted}
+          onToggleMute={toggleMuted}
+          onHouseRules={() => setOverlay('house')}
+          dim={stage === 'mixing'}
+        />
       )}
 
       <div className="stageArea">
@@ -80,7 +86,6 @@ export default function App() {
                 variation={current}
                 onMixAgain={startMix}
                 onShowRules={() => setOverlay('rules')}
-                onHouseRules={() => setOverlay('house')}
               />
             </motion.div>
           )}

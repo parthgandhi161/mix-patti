@@ -3,6 +3,16 @@ import './Card.css'
 const SUITS = ['♠', '♥', '♦', '♣'] // ♠ ♥ ♦ ♣
 
 /**
+ * Most names wrap fine at spaces (text-wrap: balance handles those).
+ * A name that's a single long word - e.g. "Sarphanchi" - has nowhere
+ * to break, so it needs a smaller font instead to stay inside the
+ * card frame.
+ */
+function longestWord(name = '') {
+  return Math.max(0, ...name.split(' ').map((w) => w.length))
+}
+
+/**
  * Pick a stable suit for a variation, so the same twist always shows
  * the same corners. A tiny string hash, not cryptography.
  */
@@ -48,7 +58,11 @@ export function CardFace({ variation, className = '', shimmer = false }) {
       >
         {suit}
       </span>
-      <h2 className="card__name">{variation?.name}</h2>
+      <h2
+        className={`card__name ${longestWord(variation?.name) >= 9 ? 'card__name--long' : ''}`}
+      >
+        {variation?.name}
+      </h2>
       <span className="card__divider" aria-hidden="true" />
       <span
         className={`card__pip card__pip--br ${isRed ? 'is-red' : ''}`}
