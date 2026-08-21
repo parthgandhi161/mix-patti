@@ -1,0 +1,23 @@
+{
+  "name": "Mix Patti",
+  "short_name": "Mix Patti",
+  "description": "A randomizer and rulebook for Teen Patti variations.",
+  "start_url": "/mix-patti/",
+  "scope": "/mix-patti/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#160821",
+  "theme_color": "#160821",
+  "icons": [
+    {
+      "src": "/mix-patti/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/mix-patti/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -14,7 +14,10 @@ client-side static React, deployed as a static site to GitHub Pages.
 - React 19 + Vite 8, plain CSS (no Tailwind/CSS-in-JS/component library).
 - Framer Motion for the few animated transitions (stage crossfade, the
   mixing carousel flip, sheet slide-up).
-- `oxlint` for linting (`npm run lint`). No test suite exists yet.
+- `oxlint` for linting (`npm run lint`). No automated test suite or CI
+  gate exists yet - Playwright is a `devDependency`, but only for one-off
+  visual verification during development (see README's "Visual checks
+  with Playwright"), nothing runs it automatically.
 - Fonts are loaded via a Google Fonts `<link>` in `index.html`, not
   self-hosted or npm-installed.
 
@@ -82,6 +85,13 @@ See the README's "Layout" section for the full file-by-file map.
   animation-duration override) and `Mixing.jsx` (skips straight to the
   landed state) already handle it - preserve that when touching animation
   code.
+- **Verify animation/layout changes with a real screenshot, not just
+  reasoning about the CSS.** This app is almost entirely mobile-only
+  animation (the mix timeline, the fan-out reveal, safe-area layout), so
+  it's easy for a change to be correct in principle and still clip or
+  look wrong at the actual 430px phone width. Use Playwright against
+  `npm run dev` with `devices['iPhone 13']` (touch emulation matters here,
+  see `isTouchPrimary()`) - see the README section for the exact recipe.
 
 ## Deployment
 

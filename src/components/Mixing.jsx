@@ -2,12 +2,26 @@ import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { CardBack, CardFace } from './Card'
 import { TIMELINE, prefersReducedMotion } from '../lib/timing'
-import { playShuffle, playSpin, playLand, stopAll } from '../lib/sound'
+import { playShuffle, playFlip, playLand, stopAll } from '../lib/sound'
 import { shuffled } from '../lib/pick'
 import './Mixing.css'
 
 const DECK = [0, 1, 2, 3, 4]
 const FLIP_EASE = [0.3, 0.85, 0.35, 1]
+const FAN = [0, 1, 2, 3, 4]
+const HERO = 2
+const FAN_TRANSITION = 'transform 460ms cubic-bezier(0.22, 1.28, 0.36, 1), opacity 300ms ease'
+
+/** Inline transform for a side card: stacked -> fanned -> collapsed away on landing. */
+function fanTransform(offset, fanned, landed) {
+  if (landed) {
+    return `translate(${offset * 90}px, 70px) rotate(${offset * 8}deg) scale(0.8)`
+  }
+  if (fanned) {
+    return `translate(calc(${offset} * clamp(46px, 15vw, 62px)), ${Math.abs(offset) * 14}px) rotate(${offset * 12}deg)`
+  }
+  return 'translate(0, 0) rotate(0deg)'
+}
 
 /**
  * Stage 2 - the mix. Two phases, ~3.9s total:
@@ -21,11 +35,12 @@ const FLIP_EASE = [0.3, 0.85, 0.35, 1]
  * mounts, so the carousel is pure theatre - it always lands on
  * `variation`. Tapping anywhere skips straight to the result.
  *
- * The flip is the classic "flip clock" trick: two CardFaces are
- * stacked back-to-back inside one rotating wrapper. Whichever face is
- * currently turned away from the viewer gets its content swapped
- * *before* it rotates into view, so the name-change itself is never
- * seen - only the turn is.
+ * The flip is the classic "flip clock" trick: a CardFace and a
+ * CardBack are stacked back-to-back inside one rotating wrapper, so
+ * each decelerating turn shows back, then a new name, then back
+ * again, like a real card being riffled and re-peeked at. The name
+ * face's content is swapped *while it's turned away* (mid-turn,
+ * showing the back), so the change itself is never seen mid-flip.
  */
 export function Mixing({ variation, variations, muted, onFinish }) {
   const [phase, setPhase] = useState('shuffle')
@@ -35,12 +50,11 @@ export function Mixing({ variation, variations, muted, onFinish }) {
   const [reveal, setReveal] = useState(() => ({
     rotation: 0,
     step: 0,
-    frontIsA: true, // which stacked face is currently facing the viewer
-    contentA: pool[0],
-    contentB: pool[1] ?? pool[0],
+    content: pool[0],
     flipMs: 160,
     landed: false,
   }))
+  const [fanned, setFanned] = useState(false)
   const done = useRef(false)
 
   const finish = () => {
@@ -57,15 +71,12 @@ export function Mixing({ variation, variations, muted, onFinish }) {
       // Keep the reveal, drop the theatre. Landing this immediately
       // triggers the "hold briefly" effect below, which calls finish().
       setPhase('reveal')
-      setReveal((r) => ({ ...r, contentA: variation, landed: true }))
+      setReveal((r) => ({ ...r, content: variation, landed: true }))
       if (!muted) playLand()
     } else {
       if (!muted) playShuffle(TIMELINE.shuffle)
       timers.push(
-        setTimeout(() => {
-          setPhase('reveal')
-          if (!muted) playSpin(TIMELINE.reveal)
-        }, TIMELINE.shuffle),
+        setTimeout(() => setPhase('reveal'), TIMELINE.shuffle),
       )
     }
 
@@ -78,46 +89,71 @@ export function Mixing({ variation, variations, muted, onFinish }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // --- the carousel: decelerating flips, landing on `variation` -------
+  // Flip the fanned-out transform on a tick after the side cards mount, so
+  // the browser has a stacked frame to transition *from* instead of the
+  // cards popping straight into their spread positions.
+  useEffect(() => {
+    if (phase !== 'reveal') return
+    let raf1
+    let raf2
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setFanned(true))
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
+  }, [phase])
+
+  // --- the carousel: decelerating double-flips, landing on `variation` ---
   useEffect(() => {
     if (phase !== 'reveal' || prefersReducedMotion()) return
     let timer
     const start = performance.now()
 
-    const swap = () => {
+    // Each cycle is two half-turns - face to back, then back to the next
+    // face - so the same per-turn pacing as before now reads as "peek at
+    // the back, then a new name" instead of one name dissolving into
+    // another. The two halves always add up to the same `flipMs`/`gap`
+    // budget a single flip used to take, so the overall deceleration
+    // curve and total reveal duration are unchanged.
+    const cycle = () => {
       const elapsed = performance.now() - start
       const progress = Math.min(1, elapsed / TIMELINE.reveal)
-      // Gap between flips stretches from ~90ms to ~400ms: the wheel
-      // loses momentum. Each individual flip is a bit shorter than
-      // the gap that follows it, so the card visibly rests a beat
-      // before the next turn starts.
       const gap = 90 + 310 * progress ** 2.4
       const flipMs = Math.max(90, Math.min(260, gap * 0.55))
       const isFinal = progress >= 1
+      const halfMs = flipMs / 2
 
-      setReveal((r) => {
-        const nextStep = r.step + 1
-        const content = isFinal ? variation : pool[nextStep % pool.length]
-        return {
-          rotation: r.rotation + 180,
-          step: nextStep,
-          frontIsA: !r.frontIsA,
-          // Write into whichever face is currently turned away.
-          contentA: r.frontIsA ? r.contentA : content,
-          contentB: r.frontIsA ? content : r.contentB,
-          flipMs,
-          landed: isFinal,
+      // Half-turn one: face -> back.
+      if (!muted) playFlip()
+      setReveal((r) => ({ ...r, rotation: r.rotation + 180, flipMs: halfMs }))
+
+      timer = setTimeout(() => {
+        // Half-turn two: back -> face, loaded with the next name (or the
+        // real winner on the final turn) while it was turned away.
+        if (!muted) playFlip()
+        setReveal((r) => {
+          const nextStep = r.step + 1
+          return {
+            ...r,
+            rotation: r.rotation + 180,
+            step: nextStep,
+            content: isFinal ? variation : pool[nextStep % pool.length],
+            flipMs: halfMs,
+            landed: isFinal,
+          }
+        })
+
+        if (isFinal) {
+          if (!muted) playLand()
+          return
         }
-      })
-
-      if (isFinal) {
-        if (!muted) playLand()
-        return
-      }
-      timer = setTimeout(swap, gap)
+        timer = setTimeout(cycle, Math.max(0, gap - flipMs))
+      }, halfMs)
     }
 
-    timer = setTimeout(swap, 90)
+    timer = setTimeout(cycle, 90)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
@@ -164,41 +200,59 @@ export function Mixing({ variation, variations, muted, onFinish }) {
         )}
 
         {phase === 'reveal' && (
-          <div className="reveal">
-            <div
-              className={`reveal__glow ${
-                reveal.landed ? 'reveal__glow--pulse' : ''
-              }`}
-              aria-hidden="true"
-            />
-            <motion.div
-              className="reveal__flipper"
-              animate={{
-                rotateY: reveal.rotation,
-                scale: reveal.landed ? [1, 1.06, 1] : 1,
-              }}
-              transition={{
-                rotateY: { duration: reveal.flipMs / 1000, ease: FLIP_EASE },
-                scale: {
-                  duration: 0.26,
-                  ease: 'easeOut',
-                  delay: reveal.flipMs / 1000,
-                },
-              }}
-            >
-              <div className="reveal__face reveal__face--a">
-                <CardFace
-                  variation={reveal.contentA}
-                  shimmer={reveal.landed && reveal.frontIsA}
-                />
-              </div>
-              <div className="reveal__face reveal__face--b">
-                <CardFace
-                  variation={reveal.contentB}
-                  shimmer={reveal.landed && !reveal.frontIsA}
-                />
-              </div>
-            </motion.div>
+          <div className="fan">
+            {FAN.filter((i) => i !== HERO).map((i) => {
+              const offset = i - HERO
+              return (
+                <div
+                  className="fan__slot fan__slot--side"
+                  key={i}
+                  style={{
+                    transform: fanTransform(offset, fanned, reveal.landed),
+                    opacity: reveal.landed ? 0 : 1,
+                    transition: FAN_TRANSITION,
+                  }}
+                >
+                  <div
+                    className={`fan__bob ${!reveal.landed ? 'fan__bob--active' : ''}`}
+                    style={{ animationDelay: `${Math.abs(offset) * 110}ms` }}
+                  >
+                    <CardBack />
+                  </div>
+                </div>
+              )
+            })}
+
+            <div className="fan__slot fan__slot--hero">
+              <div
+                className={`reveal__glow ${
+                  reveal.landed ? 'reveal__glow--pulse' : ''
+                }`}
+                aria-hidden="true"
+              />
+              <motion.div
+                className="reveal__flipper"
+                animate={{
+                  rotateY: reveal.rotation,
+                  scale: reveal.landed ? [1, 1.06, 1] : 1,
+                }}
+                transition={{
+                  rotateY: { duration: reveal.flipMs / 1000, ease: FLIP_EASE },
+                  scale: {
+                    duration: 0.26,
+                    ease: 'easeOut',
+                    delay: reveal.flipMs / 1000,
+                  },
+                }}
+              >
+                <div className="reveal__face reveal__face--a">
+                  <CardFace variation={reveal.content} shimmer={reveal.landed} />
+                </div>
+                <div className="reveal__face reveal__face--b">
+                  <CardBack />
+                </div>
+              </motion.div>
+            </div>
           </div>
         )}
       </div>

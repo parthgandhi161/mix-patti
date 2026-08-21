@@ -4,7 +4,7 @@
  * Why synthesis instead of the mp3 files the spec mentions: it ships
  * zero audio assets, so there is nothing to host, preload or get
  * wrong on GitHub Pages. If you later want real recordings, keep the
- * exported functions (playShuffle / playSpin / playLand / stopAll)
+ * exported functions (playShuffle / playFlip / playLand / stopAll)
  * and swap their bodies for <audio> or decoded buffers - no component
  * needs to change.
  *
@@ -26,6 +26,14 @@ if (typeof document !== 'undefined') {
     if (document.visibilityState === 'visible' && ctx?.state === 'suspended') {
       ctx.resume().catch(() => {})
     }
+  })
+
+  // iOS WebKit only reliably honours resume() when it runs inside a real
+  // user-gesture call stack - the visibilitychange nudge above can silently
+  // no-op there. The next tap after returning to the app always fires this,
+  // so it's a backstop for exactly that case.
+  document.addEventListener('pointerdown', () => {
+    if (ctx?.state === 'suspended') ctx.resume().catch(() => {})
   })
 }
 
@@ -170,7 +178,7 @@ function ghungroo(at) {
   }
 }
 
-/* --- the three cues the mix uses --------------------------------- */
+/* --- the three cues the mix uses ---------------------------------- */
 
 /** Phase 1: a riffle shuffle across `ms`. */
 export function playShuffle(ms = 1000) {
@@ -191,24 +199,10 @@ export function playShuffle(ms = 1000) {
   drum(start + secs * 0.92, 'low', 0.45) // the deck squaring off
 }
 
-/**
- * Phase 2: a tabla/dhol build that accelerates under the name spin,
- * mirroring the visual deceleration with rising tension.
- */
-export function playSpin(ms = 2000) {
+/** Phase 2: one card turning over - fired on every turn of the reveal carousel. */
+export function playFlip() {
   if (!ensure()) return
-  const start = ctx.currentTime + 0.02
-  const secs = ms / 1000
-  let t = 0
-  let gap = 0.2
-  let i = 0
-  while (t < secs - 0.05) {
-    const kind = i % 4 === 0 ? 'low' : 'high'
-    drum(start + t, kind, 0.3 + 0.35 * (t / secs))
-    t += gap
-    gap = Math.max(0.075, gap * 0.87) // accelerando
-    i++
-  }
+  riffle(ctx.currentTime + 0.01, { gain: 0.24, freq: 2500 + Math.random() * 700, len: 0.07 })
 }
 
 /** Phase 3: the reveal. */

@@ -68,17 +68,56 @@
   }
 }
 
-/* --- phase 2: the reveal carousel ----------------------------------
-   A single card flips through real card faces, decelerating (JS
-   drives each turn's duration via Framer Motion), and lands on the
-   winner. Two CardFaces are stacked back-to-back ("flip clock" trick)
-   inside .reveal__flipper, whose rotateY is animated by React. */
-.reveal {
+/* --- phase 2: the fan-out reveal ------------------------------------
+   The deck spreads into a hand of face-down cards that bob up and down
+   like the game is still deciding, while the centre (hero) slot flips
+   through real card faces, decelerating (JS drives each turn's
+   duration via Framer Motion), and lands on the winner. On landing the
+   side cards slide away and fade, collapsing the fan back down to the
+   single winning card. Two CardFaces are stacked back-to-back ("flip
+   clock" trick) inside .reveal__flipper, whose rotateY is animated by
+   React. */
+.fan {
   position: relative;
-  width: min(70%, 260px);
+  width: min(58%, 210px);
   aspect-ratio: 5 / 7;
   display: grid;
   place-items: center;
+}
+
+.fan__slot {
+  position: absolute;
+  inset: 0;
+}
+
+.fan__slot--side {
+  will-change: transform, opacity;
+}
+
+.fan__slot--hero {
+  z-index: 1;
+}
+
+/* Idle up/down suspense while the fan is out and nothing's landed yet -
+   applied to a child of .fan__slot--side so it layers on top of that
+   slot's own (JS-driven) spread transform instead of overwriting it. */
+.fan__bob {
+  width: 100%;
+  height: 100%;
+}
+
+.fan__bob--active {
+  animation: fanBob 1100ms ease-in-out infinite;
+}
+
+@keyframes fanBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8%);
+  }
 }
 
 .reveal__glow {
