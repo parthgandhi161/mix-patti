@@ -123,6 +123,12 @@ button {
     env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
+/* Extends the shuffle-stage dim (see .appHeader--dim) into the shell's
+   own safe-area padding, so the notch/home-indicator strips dim too. */
+.shell--dim {
+  background: var(--mixing-bg);
+}
+
 /* Everything below the header - the three crossfading stages live here,
    absolutely positioned against this box rather than the whole shell. */
 .stageArea {

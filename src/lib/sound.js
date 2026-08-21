@@ -58,6 +58,32 @@ function ensure() {
   return ctx
 }
 
+/**
+ * Kick off context creation/resume as early as possible in a tap handler,
+ * without waiting on it. Call this synchronously from the click handler
+ * that starts a mix, before any React state updates - resume() is only
+ * reliably honoured by iOS WebKit inside (or very close to) the original
+ * gesture's call stack.
+ */
+export function primeAudio() {
+  ensure()
+}
+
+/**
+ * Same as ensure(), but resolves only once the context is actually
+ * running. Scheduling nodes against ctx.currentTime while still
+ * "suspended" (the state right after backgrounding, since resume() is
+ * async) schedules them against a frozen clock - this is what made cues
+ * play back dropped/garbled/silent after the app had been backgrounded.
+ */
+async function ensureRunning() {
+  const context = ensure()
+  if (context && context.state !== 'running') {
+    await context.resume().catch(() => {})
+  }
+  return context
+}
+
 function makeNoise(audio) {
   const buf = audio.createBuffer(1, audio.sampleRate, audio.sampleRate)
   const data = buf.getChannelData(0)
@@ -181,8 +207,8 @@ function ghungroo(at) {
 /* --- the three cues the mix uses ---------------------------------- */
 
 /** Phase 1: a riffle shuffle across `ms`. */
-export function playShuffle(ms = 1000) {
-  if (!ensure()) return
+export async function playShuffle(ms = 1000) {
+  if (!(await ensureRunning())) return
   const start = ctx.currentTime + 0.02
   const secs = ms / 1000
   const n = 26
@@ -200,14 +226,14 @@ export function playShuffle(ms = 1000) {
 }
 
 /** Phase 2: one card turning over - fired on every turn of the reveal carousel. */
-export function playFlip() {
-  if (!ensure()) return
+export async function playFlip() {
+  if (!(await ensureRunning())) return
   riffle(ctx.currentTime + 0.01, { gain: 0.24, freq: 2500 + Math.random() * 700, len: 0.07 })
 }
 
 /** Phase 3: the reveal. */
-export function playLand() {
-  if (!ensure()) return
+export async function playLand() {
+  if (!(await ensureRunning())) return
   const at = ctx.currentTime + 0.01
   drum(at, 'low', 0.6)
   chime(at + 0.02)

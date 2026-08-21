@@ -12,6 +12,7 @@ import { Credit } from './components/Brand'
 import { useMuted } from './lib/useMuted'
 import { useImmersive } from './lib/immersive'
 import { pickNext } from './lib/pick'
+import { primeAudio } from './lib/sound'
 
 const FADE = {
   initial: { opacity: 0 },
@@ -50,9 +51,11 @@ export default function App() {
   const showCredit = !overlay
 
   const startMix = () => {
-    // Fullscreen + wake lock only succeed inside a user gesture, so
-    // this has to run synchronously at the top of the click handler.
+    // Fullscreen + wake lock + audio resume only succeed inside a user
+    // gesture, so this has to run synchronously at the top of the click
+    // handler - see src/lib/sound.js for why this matters for iOS.
     enterImmersive()
+    primeAudio()
     setOverlay(null)
     // Never the same twist twice in a row.
     setCurrent(pickNext(variations, current?.id))
@@ -60,7 +63,7 @@ export default function App() {
   }
 
   return (
-    <div className="shell">
+    <div className={`shell${stage === 'mixing' ? ' shell--dim' : ''}`}>
       {showChrome && <FloatingSuits />}
       {showHeader && (
         <Header
