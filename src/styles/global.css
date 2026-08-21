@@ -1,0 +1,161 @@
+/* ---------------------------------------------------------------
+   Design tokens. Every colour in the app comes from here, so the
+   theme can be retuned in one place. Single committed dark theme,
+   no light mode (deliberate, per the spec).
+   --------------------------------------------------------------- */
+:root {
+  --night-0: #160821; /* page edge, deepest plum */
+  --night-1: #1f0d30; /* ground */
+  --night-2: #2c1444; /* raised surface / section card */
+  --night-3: #3a1c58; /* lifted chip / control */
+  --line: #4a2a6b; /* hairline */
+  --gold: #f4c64a; /* IDENTITY - wordmark, button, joker */
+  --gold-deep: #d99b28;
+  --pink: #ff4e8e; /* rani pink - win condition */
+  --teal: #25cdb9; /* peacock - step numbers, highlight */
+  --ivory: #fbf1de; /* primary text */
+  --lav: #b79ccf; /* secondary text */
+  --lav-dim: #8a71a6; /* tertiary / notes */
+
+  /* Two typefaces, on purpose: the wordmark gets one fun display face,
+     everything else - headings and body alike - shares a single
+     workhorse font. */
+  --font-poster: "Baloo Bhaijaan 2", system-ui, sans-serif;
+  --font-head: "Baloo 2", system-ui, sans-serif;
+  --font-body: var(--font-head);
+
+  /* One place to retune the whole mix timeline. The JS reads these
+     same durations from src/lib/timing.js - keep the two in sync. */
+  --dur-shuffle: 1000ms;
+  --dur-reveal: 2900ms;
+}
+
+/* --- reset ---------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ivory);
+  background-color: var(--night-0);
+  /* Festive glow behind the app column so the sides never read as
+     flat dead space on a wide screen. */
+  background-image:
+    radial-gradient(
+      ellipse 80% 60% at 50% -10%,
+      rgba(255, 78, 142, 0.18),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 70% 50% at 50% 110%,
+      rgba(37, 205, 185, 0.12),
+      transparent 70%
+    );
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* The whole app is a tap surface; kill the blue flash and the
+     double-tap-to-zoom delay on iOS. */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* Visually hidden but still announced by screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- the app surface ------------------------------------------
+   Phone: fills the screen edge to edge, like a native app.
+   Desktop: a centred 430px column with rounded corners and a soft
+   shadow, floating on the plum backdrop. Never widens into a
+   website layout.
+   --------------------------------------------------------------- */
+#root {
+  display: grid;
+  place-items: center;
+}
+
+.shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 430px;
+  height: 100dvh;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--night-1), var(--night-0));
+  /* Respect the notch / home indicator on a real phone. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Everything below the header - the three crossfading stages live here,
+   absolutely positioned against this box rather than the whole shell. */
+.stageArea {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+@media (min-width: 480px) {
+  .shell {
+    height: min(900px, 100dvh);
+    border-radius: 28px;
+    border: 1px solid var(--line);
+    box-shadow:
+      0 40px 90px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(244, 198, 74, 0.06);
+  }
+}
+
+/* Every stage fills the shell and stacks on the same grid cell, so
+   we can cross-fade between them without any layout shift. */
+.stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

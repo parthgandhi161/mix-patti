@@ -1,0 +1,182 @@
+/* Shared card geometry. Both sides use the same box so the flip in
+   Stage 2 lands exactly on the Stage 3 result card with no jump. */
+.card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* --- face down --------------------------------------------------- */
+.card--back {
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      rgba(244, 198, 74, 0.14),
+      transparent 60%
+    ),
+    linear-gradient(160deg, #43206a, #2a1240 55%, #1d0c2e);
+  border: 1px solid rgba(244, 198, 74, 0.35);
+  box-shadow:
+    inset 0 0 0 6px rgba(22, 8, 33, 0.55),
+    inset 0 0 0 7px rgba(244, 198, 74, 0.28),
+    0 18px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Diagonal cross-hatch, the classic card-back texture. */
+.card__lattice {
+  position: absolute;
+  inset: 14px;
+  border-radius: 10px;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(244, 198, 74, 0.13) 0 1px,
+      transparent 1px 11px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 78, 142, 0.11) 0 1px,
+      transparent 1px 11px
+    );
+}
+
+.card__medallion {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #2f1549, #1b0a2b);
+  border: 1px solid rgba(244, 198, 74, 0.45);
+  box-shadow: 0 0 26px rgba(244, 198, 74, 0.18);
+}
+
+.card__monogram {
+  font-family: var(--font-poster);
+  font-weight: 700;
+  font-size: clamp(20px, 7vw, 30px);
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, var(--gold), var(--gold-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* --- face up ----------------------------------------------------- */
+.card--face {
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      rgba(244, 198, 74, 0.1),
+      transparent 65%
+    ),
+    linear-gradient(165deg, var(--night-2), var(--night-1));
+  border: 1px solid rgba(244, 198, 74, 0.4);
+  box-shadow:
+    inset 0 0 0 6px rgba(22, 8, 33, 0.5),
+    inset 0 0 0 7px rgba(244, 198, 74, 0.22),
+    /* thin rani-pink medal ring, just inside the gold frame */
+    inset 0 0 0 9px rgba(255, 78, 142, 0.14),
+    0 18px 40px rgba(0, 0, 0, 0.5);
+  padding: 26px 20px;
+}
+
+/* Giant faint suit behind the name, for texture rather than reading
+   as a second glyph. */
+.card__watermark {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  font-size: clamp(140px, 55vw, 240px);
+  line-height: 1;
+  color: var(--gold);
+  opacity: 0.06;
+  pointer-events: none;
+}
+
+.card__name {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: clamp(30px, 11vw, 46px);
+  line-height: 1.05;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--ivory);
+  text-shadow: 0 2px 18px rgba(244, 198, 74, 0.22);
+}
+
+/* Small ornamental rule under the name. */
+.card__divider {
+  position: relative;
+  z-index: 1;
+  width: 46px;
+  height: 2px;
+  margin-top: 14px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--gold-deep),
+    var(--gold),
+    var(--gold-deep),
+    transparent
+  );
+}
+
+.card__pip {
+  position: absolute;
+  z-index: 1;
+  font-size: clamp(26px, 9vw, 34px);
+  line-height: 1;
+  color: var(--lav);
+  opacity: 0.85;
+}
+
+.card__pip.is-red {
+  color: var(--pink);
+}
+
+.card__pip--tl {
+  top: 16px;
+  left: 16px;
+}
+
+.card__pip--br {
+  right: 16px;
+  bottom: 16px;
+  transform: rotate(180deg);
+}
+
+/* One-shot gloss sweep, opted into via the `shimmer` prop when a card
+   actually lands (not on every carousel swap). */
+.card--shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 42%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 58%
+  );
+  transform: translateX(-130%);
+  mix-blend-mode: overlay;
+  animation: shimmerSweep 1000ms ease-out 150ms 1 both;
+}
+
+@keyframes shimmerSweep {
+  to {
+    transform: translateX(130%);
+  }
+}

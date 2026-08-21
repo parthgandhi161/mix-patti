@@ -1,0 +1,63 @@
+/* Shared button shapes. Gold is the identity colour and is reserved
+   for the single primary action on a screen; everything else is a
+   quiet lifted chip. */
+
+.btn {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 0.01em;
+  border-radius: 999px;
+  padding: 14px 22px;
+  min-height: 50px; /* comfortable thumb target */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 140ms ease, filter 140ms ease, background 140ms ease;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.btn--gold {
+  width: 100%;
+  color: #2a1206;
+  background: linear-gradient(180deg, var(--gold), var(--gold-deep));
+  box-shadow:
+    0 10px 26px rgba(244, 198, 74, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.btn--gold:hover {
+  filter: brightness(1.06);
+}
+
+.btn--ghost {
+  color: var(--ivory);
+  background: var(--night-2);
+  border: 1px solid var(--line);
+}
+
+.btn--ghost:hover {
+  background: var(--night-3);
+}
+
+/* Outlined gold - a secondary action that still reads as important,
+   used for "Show rules". */
+.btn--outline {
+  width: 100%;
+  color: var(--gold);
+  background: rgba(244, 198, 74, 0.07);
+  border: 1px solid rgba(244, 198, 74, 0.4);
+}
+
+.btn--outline:hover {
+  background: rgba(244, 198, 74, 0.13);
+}

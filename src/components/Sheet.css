@@ -1,0 +1,126 @@
+/* Shared chrome for the two full-screen rule panels (Stage 4 and
+   Stage 5). Covers the whole .shell; only the close button dismisses
+   it - the mount/unmount slide is driven by Framer Motion in each
+   component, not by CSS keyframes here. */
+.sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background: linear-gradient(180deg, var(--night-1), var(--night-0));
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  flex-shrink: 0;
+}
+
+.sheet__title {
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 1.15;
+  color: var(--ivory);
+}
+
+.sheet__close {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--night-2);
+  border: 1px solid var(--line);
+  font-size: 17px;
+  color: var(--ivory);
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.sheet__close:hover {
+  background: var(--night-3);
+}
+
+.sheet__close:active {
+  transform: scale(0.92);
+}
+
+.sheet__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-bottom: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sheet__heading {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lav);
+  margin-bottom: 8px;
+}
+
+.sheet__heading--gold {
+  color: var(--gold);
+}
+
+.sheet__heading--pink {
+  color: var(--pink);
+}
+
+.sheet__heading--muted {
+  color: var(--lav-dim);
+}
+
+.sheet__text {
+  color: var(--lav);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.sheet__list {
+  list-style: none;
+  counter-reset: step;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sheet__list li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 32px;
+  color: var(--ivory);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.sheet__list li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--night-2);
+  border: 1px solid var(--line);
+  color: var(--teal);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 12px;
+}

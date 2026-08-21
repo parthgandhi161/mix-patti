@@ -1,0 +1,28 @@
+.appHeader {
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  /* The shell's own padding already covers the safe area, so this is
+     just breathing room, not another notch offset. */
+  padding: 8px 16px;
+}
+
+.appHeader__spacer {
+  width: 40px;
+  height: 40px;
+}
+
+.appHeader__word {
+  justify-self: center;
+  font-family: var(--font-poster);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #ffe9a8, var(--gold) 45%, var(--gold-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

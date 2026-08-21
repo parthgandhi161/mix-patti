@@ -1,0 +1,26 @@
+.suits {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.suits__glyph {
+  position: absolute;
+  line-height: 1;
+  transform: rotate(var(--r));
+  animation-name: suitDrift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes suitDrift {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(var(--r));
+  }
+  50% {
+    transform: translate(6px, -18px) rotate(calc(var(--r) + 6deg));
+  }
+}

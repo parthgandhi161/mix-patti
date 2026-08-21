@@ -1,0 +1,92 @@
+.home {
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+
+.home__head {
+  margin-bottom: 4px;
+}
+
+.home__wordmark {
+  font-family: var(--font-poster);
+  font-weight: 700;
+  font-size: clamp(38px, 13vw, 52px);
+  line-height: 1.1;
+  background: linear-gradient(180deg, #ffe9a8, var(--gold) 45%, var(--gold-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 4px 22px rgba(244, 198, 74, 0.25));
+}
+
+.home__tagline {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: var(--lav);
+}
+
+.home__middle {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  width: 100%;
+  min-height: 0;
+}
+
+/* The card itself is the primary tap target - a big, obvious one. */
+.home__cardBtn {
+  width: min(62%, 230px);
+  max-height: 100%;
+  border-radius: 18px;
+  animation: breathe 4.5s ease-in-out infinite;
+}
+
+.home__cardBtn:active {
+  transform: scale(0.96);
+}
+
+.home__cardBtn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 8px;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1.2deg);
+  }
+  50% {
+    transform: translateY(-9px) rotate(1.2deg);
+  }
+}
+
+.home__hint {
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lav-dim);
+  animation: pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.home__foot {
+  width: 100%;
+  padding-bottom: 10px;
+}
