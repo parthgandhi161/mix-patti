@@ -32,9 +32,9 @@ const FADE = {
  *   any stage --☰ header------>  overlay: 'house'  --close-->  result
  *
  * The winning variation is chosen the moment you tap, before the
- * carousel starts, so it can land on it. Mixing itself is left out of
- * the crossfade group below - it's already a themed full animation,
- * so it just mounts/unmounts directly.
+ * carousel starts, so it can land on it. All three stages share one
+ * crossfade group and one card size, so moving between them reads as a
+ * single continuous card rather than three separate screens.
  */
 export default function App() {
   const [stage, setStage] = useState('home')
@@ -71,7 +71,15 @@ export default function App() {
 
   return (
     <div className={`shell${stage === 'mixing' ? ' shell--dim' : ''}`}>
-      {showChrome && <FloatingSuits />}
+      {/* Fades with the stage instead of vanishing on the same frame the
+          dim lands - an abrupt unmount reads as a flicker. */}
+      <AnimatePresence>
+        {showChrome && (
+          <motion.div key="suits" {...FADE}>
+            <FloatingSuits />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {showHeader && (
         <Header
           stage={stage}
@@ -83,10 +91,28 @@ export default function App() {
       )}
 
       <div className="stageArea">
-        <AnimatePresence mode="wait">
+        {/* No `mode="wait"`: waiting for the outgoing stage to finish
+            leaves dead frames between them. Every .stage is absolutely
+            positioned, so letting both mount at once simply stacks them
+            and they cross-dissolve. Because the card is the same size in
+            the same place on every stage, that dissolve has nothing to
+            pop - the mixing stage's landed winner sits directly under
+            the result card as one fades into the other. */}
+        <AnimatePresence>
           {stage === 'home' && (
             <motion.div key="home" {...FADE}>
               <Home onMix={startMix} />
+            </motion.div>
+          )}
+
+          {stage === 'mixing' && (
+            // Keyed per variation so each mix remounts with fresh state.
+            <motion.div key={`mixing-${current.id}`} {...FADE}>
+              <Mixing
+                variation={current}
+                variations={variations}
+                onFinish={() => setStage('result')}
+              />
             </motion.div>
           )}
 
@@ -100,17 +126,6 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {stage === 'mixing' && (
-          <Mixing
-            // Remounting per variation resets the animation cleanly.
-            key={current.id}
-            variation={current}
-            variations={variations}
-            muted={muted}
-            onFinish={() => setStage('result')}
-          />
-        )}
       </div>
 
       {showCredit && <Credit />}

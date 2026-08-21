@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, useMotionValue, useTransform } from 'framer-motion'
+import { animate, motion, useMotionValue, useTransform } from 'framer-motion'
 import { CardBack, CardFace } from './Card'
 import { TIMELINE, prefersReducedMotion } from '../lib/timing'
 import { playShuffle, playFlip, playLand, stopAll } from '../lib/sound'
@@ -7,74 +7,149 @@ import { shuffled } from '../lib/pick'
 import './Mixing.css'
 
 const DECK = [0, 1, 2, 3, 4]
-const FLIP_EASE = [0.3, 0.85, 0.35, 1]
-const FAN = [0, 1, 2, 3, 4]
-const HERO = 2
-const FAN_TRANSITION = 'transform 460ms cubic-bezier(0.22, 1.28, 0.36, 1), opacity 300ms ease'
 
-/** Inline transform for a side card: stacked -> fanned -> collapsed away on landing. */
-function fanTransform(offset, fanned, landed) {
-  if (landed) {
-    return `translate(${offset * 90}px, 70px) rotate(${offset * 8}deg) scale(0.8)`
-  }
-  if (fanned) {
-    return `translate(calc(${offset} * clamp(46px, 15vw, 62px)), ${Math.abs(offset) * 14}px) rotate(${offset * 12}deg)`
-  }
-  return 'translate(0, 0) rotate(0deg)'
+/* --- the carousel -------------------------------------------------- */
+
+// strip[0]. Renders a card back rather than a face, so the carousel
+// starts out looking exactly like the settled deck it replaces.
+const BACK = null
+const TRAVEL = 19 // decoys that pass through the centre before the winner
+const TRAIL = 2 // decoys parked past it, so the overshoot shows real cards
+const WIN_INDEX = 1 + TRAVEL // strip[WIN_INDEX] === variation; +1 for BACK
+const OVERSHOOT = 0.28 // cards past the detent before the reel pulls back
+const SETTLE_AT = 0.88 // fraction of TIMELINE.reveal spent gliding
+const ENTER_MS = 260 // side cards fading in at the handoff
+const WINDOW = 2 // cards mounted either side of centre
+// Spacing wide enough that two cards never overlap, even at the worst
+// phase (pos exactly halfway between them, where each is scaled to 0.88
+// and they clear each other by ~9px). Card art is opaque, so any overlap
+// during the fast pass reads as two half-visible cards fighting rather
+// than one card in front of another.
+const STEP = 92 // card-to-card spacing, as a % of one card's own width
+const SCALE_FALLOFF = 0.78 // scale multiplier per card away from centre
+const FADE_FALLOFF = 0.55 // opacity multiplier per card past the plateau
+const SOLID = 0.5 // |d| within this stays fully opaque - see fade()
+const TICK_MIN_MS = 40 // audio tick debounce, see the subscriber below
+
+/** Gets the reel off the mark. GLIDE alone would start at full speed. */
+const ACCEL = (u) => u ** 1.6
+/** Slot-reel deceleration: opens at 2.5x the mean rate, long flat tail. */
+const GLIDE = (u) => 1 - (1 - u) ** 2.5
+/** The pull-back off the overshoot: moves, then arrives dead still. */
+const SETTLE = (u) => 1 - (1 - u) ** 2
+
+/**
+ * Opacity by distance from centre, with a flat top.
+ *
+ * `pos` is fractional, so the card in the slot is almost never at
+ * exactly d=0 - a bare falloff curve would leave it permanently
+ * semi-transparent and let the cards behind bleed through it. The
+ * plateau keeps whichever card currently owns the slot fully solid.
+ */
+function fade(d) {
+  const a = Math.abs(d)
+  return a <= SOLID ? 1 : FADE_FALLOFF ** (a - SOLID)
 }
 
 /**
- * Stage 2 - the mix. Two phases (durations from `TIMELINE`, currently
- * slowed for on-device mobile-flip diagnosis - see timing.js):
+ * One card on the travelling strip.
+ *
+ * Extracted rather than inlined into the .map() because each card needs
+ * its own useTransform hooks, and hooks can't be called in a loop body.
+ * Everything positional runs on motion values, so a moving card never
+ * re-renders - React only decides *which* cards are mounted.
+ *
+ * Two nested elements on purpose: the outer slot carries the travel
+ * transform and the one-shot fade-out on landing (a plain CSS
+ * transition), the inner carries the distance-based opacity (a motion
+ * value). Putting both opacities on one element would mean the landing
+ * fade and the per-frame falloff fighting over the same property.
+ */
+function CarouselCard({ index, pos, variation, isWinner, dimmed, fadeIn, depth }) {
+  const x = useTransform(pos, (p) => `${(index - p) * STEP}%`)
+  const scale = useTransform(pos, (p) => SCALE_FALLOFF ** Math.abs(index - p))
+  const opacity = useTransform(pos, (p) => fade(index - p))
+
+  return (
+    <motion.div
+      className={`carousel__slot${dimmed ? ' carousel__slot--dimmed' : ''}${
+        fadeIn ? ' carousel__slot--in' : ''
+      }`}
+      style={{ x, scale, zIndex: 20 - depth * 2 }}
+    >
+      <motion.div
+        className={`carousel__card${isWinner ? ' carousel__card--landed' : ''}`}
+        style={{ opacity }}
+      >
+        {isWinner && (
+          <div className="reveal__glow reveal__glow--pulse" aria-hidden="true" />
+        )}
+        {variation === BACK ? (
+          <CardBack />
+        ) : (
+          <CardFace variation={variation} shimmer={isWinner} />
+        )}
+      </motion.div>
+    </motion.div>
+  )
+}
+
+/**
+ * Stage 2 - the mix. Two phases (durations from `TIMELINE`, see timing.js):
  *
  *   shuffle  a riffling face-down deck                    "mixing"
- *   reveal   a single card flipping through real card      "choosing"
- *            faces, decelerating, landing on the winner
+ *   reveal   real card faces sliding through the centre,  "choosing"
+ *            decelerating, landing on the winner
  *
- * The winning variation is decided by the parent *before* this
- * mounts, so the carousel is pure theatre - it always lands on
- * `variation`. Tapping anywhere skips straight to the result.
+ * The winning variation is decided by the parent *before* this mounts,
+ * so the carousel is pure theatre - it always lands on `variation`.
+ * Tapping anywhere skips straight to the result.
  *
- * The flip is the classic "flip clock" trick: a CardFace and a
- * CardBack are stacked back-to-back inside one rotating wrapper, so
- * each decelerating turn shows back, then a new name, then back
- * again, like a real card being riffled and re-peeked at. The name
- * face's content is swapped *while it's turned away* (mid-turn,
- * showing the back), so the change itself is never seen mid-flip.
+ * The reveal is deliberately 2D: cards travel horizontally and scale
+ * down as they move away from centre. An earlier version flipped a card
+ * in 3D, which mobile WebKit renders wrong (it drops
+ * `backface-visibility: hidden` once the rotating parent's transform is
+ * a JS-driven matrix3d, ghosting the away-facing card through) and which
+ * spends much of each turn edge-on and unreadable at phone width. Don't
+ * reintroduce perspective / preserve-3d / rotateY here.
+ *
+ * That version also fanned four face-down cards out around the hero.
+ * The carousel's own neighbours already frame the centre card, so the
+ * fan just added a second row of cards competing with it - it's gone.
  */
-export function Mixing({ variation, variations, muted, onFinish }) {
-  const [phase, setPhase] = useState('shuffle')
-  const [pool] = useState(() =>
-    shuffled(variations.filter((v) => v.id !== variation.id)),
-  )
-  const [reveal, setReveal] = useState(() => ({
-    rotation: 0,
-    step: 0,
-    content: pool[0],
-    flipMs: 160,
-    landed: false,
-  }))
-  const [fanned, setFanned] = useState(false)
+export function Mixing({ variation, variations, onFinish }) {
+  // Read once, so both effects below agree even if the OS setting flips
+  // mid-mix.
+  const [reduced] = useState(prefersReducedMotion)
+  const [phase, setPhase] = useState(reduced ? 'reveal' : 'shuffle')
+  const [landed, setLanded] = useState(reduced)
+  // True for the first moments of the reveal, while the side cards fade
+  // in around the back card that stood in for the deck.
+  const [entering, setEntering] = useState(false)
   const done = useRef(false)
 
-  // Some mobile WebKit builds stop honouring `backface-visibility: hidden`
-  // once the rotating parent's transform is a JS-driven matrix3d (which is
-  // how Framer Motion animates rotateY) - the away-facing card ghosts
-  // through instead of staying hidden. Rather than trust the browser's 3D
-  // compositing, track the live rotation ourselves and explicitly hide
-  // whichever face is turned away, in sync with the same 90deg boundary
-  // backface-visibility would use.
-  const rotateY = useMotionValue(0)
-  const facingFront = useTransform(rotateY, (v) => {
-    const f = ((v % 360) + 360) % 360
-    return f < 90 || f > 270
+  // The strip the carousel travels along. It opens with a card back, so
+  // at pos 0 the carousel is indistinguishable from the settled deck it
+  // replaces - the phase swap changes nothing on screen, and the reveal
+  // then deals that back away as the first face arrives. TRAVEL uses
+  // every decoy exactly once; the only repeats are the trailing pair,
+  // which were last centred seconds earlier at peak speed. Wrap-safe so
+  // variations.json can grow or shrink without this going out of bounds.
+  const [strip] = useState(() => {
+    const pool = shuffled(variations.filter((v) => v.id !== variation.id))
+    return [
+      BACK,
+      ...Array.from({ length: TRAVEL }, (_, i) => pool[i % pool.length]),
+      variation,
+      ...Array.from({ length: TRAIL }, (_, i) => pool[(TRAVEL + i) % pool.length]),
+    ]
   })
-  const faceAVisibility = useTransform(facingFront, (front) =>
-    front ? 'visible' : 'hidden',
-  )
-  const faceBVisibility = useTransform(facingFront, (front) =>
-    front ? 'hidden' : 'visible',
-  )
+
+  // Fractional position along the strip. One motion value drives the whole
+  // reveal - there is no timer chain, so the deceleration is a property of
+  // the easing curve and can't stutter or drift.
+  const pos = useMotionValue(reduced ? WIN_INDEX : 0)
+  const [centre, setCentre] = useState(reduced ? WIN_INDEX : 0)
 
   const finish = () => {
     if (done.current) return
@@ -82,118 +157,108 @@ export function Mixing({ variation, variations, muted, onFinish }) {
     onFinish()
   }
 
+  // --- which cards are mounted ---------------------------------------
+  // Math.round, not floor: it makes the mounted window symmetric around
+  // the nearest card, which is what guarantees every card mounts while
+  // still >= 2.5 steps out (i.e. entirely outside the clip), and makes
+  // |i - centre| an exact rank ordering for z-index.
+  useEffect(
+    () =>
+      pos.on('change', (p) => {
+        const next = Math.round(p)
+        setCentre((c) => (c === next ? c : next))
+      }),
+    [pos],
+  )
+
   // --- phase clock ---------------------------------------------------
   useEffect(() => {
-    const timers = []
-
-    if (prefersReducedMotion()) {
-      // Keep the reveal, drop the theatre. Landing this immediately
+    if (reduced) {
+      // Keep the reveal, drop the theatre. `landed` is already true, which
       // triggers the "hold briefly" effect below, which calls finish().
-      setPhase('reveal')
-      setReveal((r) => ({ ...r, content: variation, landed: true }))
-      if (!muted) playLand()
-    } else {
-      if (!muted) playShuffle(TIMELINE.shuffle)
-      timers.push(
-        setTimeout(() => setPhase('reveal'), TIMELINE.shuffle),
-      )
+      playLand()
+      return
     }
 
+    playShuffle(TIMELINE.shuffle)
+    const t = setTimeout(() => setPhase('reveal'), TIMELINE.shuffle)
     return () => {
-      timers.forEach(clearTimeout)
+      clearTimeout(t)
       if (!done.current) stopAll()
     }
-    // Runs once per mix; `muted` is read at mount on purpose so
-    // toggling mid-animation doesn't restart the timeline.
+    // Runs once per mix.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Flip the fanned-out transform on a tick after the side cards mount, so
-  // the browser has a stacked frame to transition *from* instead of the
-  // cards popping straight into their spread positions.
+  // --- the reveal: one tween, landing exactly on the winner -----------
   useEffect(() => {
-    if (phase !== 'reveal') return
-    let raf1
-    let raf2
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => setFanned(true))
+    if (phase !== 'reveal' || reduced) return
+
+    // Ticks are driven by the animation rather than a parallel timer, so
+    // sound can never run ahead of what's on screen.
+    let lastTick = 0
+    let lastTickAt = 0
+    const unTick = pos.on('change', (p) => {
+      // floor, not round: a tick belongs on the moment `pos` crosses an
+      // integer, while the mounted window flips on the half-integer.
+      const idx = Math.floor(p)
+      if (idx <= lastTick) return // monotone - the settle-back never re-ticks
+      lastTick = idx // advance before the debounce, so a suppressed
+      const now = performance.now() // tick is dropped rather than queued
+      // A backgrounded tab freezes rAF, and Framer computes tween progress
+      // from an absolute timestamp - so the first frame back can jump
+      // `pos` most of the way to the end in one event. Never fire a burst.
+      if (now - lastTickAt < TICK_MIN_MS) return
+      lastTickAt = now
+      playFlip()
     })
+
+    // Three segments: get off the mark, glide, settle. The first exists
+    // only so the reel doesn't leap from a standstill to full speed the
+    // instant the deck hands over - it carries the stand-in back card
+    // off to the left as the first real face arrives.
+    const controls = animate(pos, [0, 0.9, WIN_INDEX + OVERSHOOT, WIN_INDEX], {
+      duration: TIMELINE.reveal / 1000,
+      times: [0, 0.055, SETTLE_AT, 1],
+      ease: [ACCEL, GLIDE, SETTLE],
+      onComplete: () => {
+        setLanded(true)
+        playLand()
+      },
+    })
+
+    // Must come off again: the fade-in uses fill-mode both, which would
+    // otherwise pin opacity at 1 and defeat the landing dim-out.
+    setEntering(true)
+    const t = setTimeout(() => setEntering(false), ENTER_MS)
+
     return () => {
-      cancelAnimationFrame(raf1)
-      cancelAnimationFrame(raf2)
+      clearTimeout(t)
+      unTick()
+      controls.stop()
     }
-  }, [phase])
-
-  // --- the carousel: decelerating double-flips, landing on `variation` ---
-  useEffect(() => {
-    if (phase !== 'reveal' || prefersReducedMotion()) return
-    let timer
-    const start = performance.now()
-
-    // Each cycle is two half-turns - face to back, then back to the next
-    // face - so the same per-turn pacing as before now reads as "peek at
-    // the back, then a new name" instead of one name dissolving into
-    // another. The two halves always add up to the same `flipMs`/`gap`
-    // budget a single flip used to take, so the overall deceleration
-    // curve and total reveal duration are unchanged.
-    const cycle = () => {
-      const elapsed = performance.now() - start
-      const progress = Math.min(1, elapsed / TIMELINE.reveal)
-      // TEMP: scaled up (roughly 2x) alongside TIMELINE.reveal for
-      // on-device diagnosis of the mobile backface-visibility flash -
-      // revert alongside timing.js once confirmed fixed.
-      const gap = 180 + 620 * progress ** 2.4
-      const flipMs = Math.max(180, Math.min(520, gap * 0.55))
-      const isFinal = progress >= 1
-      const halfMs = flipMs / 2
-
-      // Half-turn one: face -> back.
-      if (!muted) playFlip()
-      setReveal((r) => ({ ...r, rotation: r.rotation + 180, flipMs: halfMs }))
-
-      timer = setTimeout(() => {
-        // Half-turn two: back -> face, loaded with the next name (or the
-        // real winner on the final turn) while it was turned away.
-        if (!muted) playFlip()
-        setReveal((r) => {
-          const nextStep = r.step + 1
-          return {
-            ...r,
-            rotation: r.rotation + 180,
-            step: nextStep,
-            content: isFinal ? variation : pool[nextStep % pool.length],
-            flipMs: halfMs,
-            landed: isFinal,
-          }
-        })
-
-        if (isFinal) {
-          if (!muted) playLand()
-          return
-        }
-        timer = setTimeout(cycle, Math.max(0, gap - flipMs))
-      }, halfMs)
-    }
-
-    timer = setTimeout(cycle, 90)
-    return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
 
   // Hold briefly on the landing flourish before handing off to Result.
   useEffect(() => {
-    if (!reveal.landed) return
+    if (!landed) return
     const t = setTimeout(finish, 420)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reveal.landed])
+  }, [landed])
 
   const handleSkip = () => {
     if (done.current) return
     stopAll()
-    if (!muted) playLand()
+    playLand()
     finish()
   }
+
+  const first = Math.max(0, centre - WINDOW)
+  const last = Math.min(strip.length - 1, centre + WINDOW)
+  const visible = []
+  for (let i = first; i <= last; i++) visible.push(i)
 
   return (
     <div
@@ -206,91 +271,58 @@ export function Mixing({ variation, variations, muted, onFinish }) {
       }}
       aria-label="Mixing. Tap to skip"
     >
-      <div className="mixing__well">
-        {phase === 'shuffle' && (
-          <div className="deck">
-            {DECK.map((i) => (
-              <div
-                className="deck__slot"
-                key={i}
-                style={{ animationDelay: `${i * 85}ms` }}
-              >
-                <CardBack />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {phase === 'reveal' && (
-          <div className="fan">
-            {FAN.filter((i) => i !== HERO).map((i) => {
-              const offset = i - HERO
-              return (
+      <div className="stage__card">
+        <div className="mixing__well">
+          {phase === 'shuffle' && (
+            <div className="deck">
+              {DECK.map((i) => (
                 <div
-                  className="fan__slot fan__slot--side"
+                  className="deck__slot"
                   key={i}
-                  style={{
-                    transform: fanTransform(offset, fanned, reveal.landed),
-                    opacity: reveal.landed ? 0 : 1,
-                    transition: FAN_TRANSITION,
-                  }}
-                >
-                  <div
-                    className={`fan__bob ${!reveal.landed ? 'fan__bob--active' : ''}`}
-                    style={{ animationDelay: `${Math.abs(offset) * 110}ms` }}
-                  >
-                    <CardBack />
-                  </div>
-                </div>
-              )
-            })}
-
-            <div className="fan__slot fan__slot--hero">
-              <div
-                className={`reveal__glow ${
-                  reveal.landed ? 'reveal__glow--pulse' : ''
-                }`}
-                aria-hidden="true"
-              />
-              <motion.div
-                className="reveal__flipper"
-                style={{ rotateY }}
-                animate={{
-                  rotateY: reveal.rotation,
-                  scale: reveal.landed ? [1, 1.06, 1] : 1,
-                }}
-                transition={{
-                  rotateY: { duration: reveal.flipMs / 1000, ease: FLIP_EASE },
-                  scale: {
-                    duration: 0.26,
-                    ease: 'easeOut',
-                    delay: reveal.flipMs / 1000,
-                  },
-                }}
-              >
-                <motion.div
-                  className="reveal__face reveal__face--a"
-                  style={{ visibility: faceAVisibility }}
-                >
-                  <CardFace variation={reveal.content} shimmer={reveal.landed} />
-                </motion.div>
-                <motion.div
-                  className="reveal__face reveal__face--b"
-                  style={{ visibility: faceBVisibility }}
+                  // 60ms, not 85: with the 640ms cut this settles the last
+                  // card at 880ms, leaving a clear still beat before the
+                  // carousel takes over at 1000. At 85 it landed at 980 and
+                  // the handoff caught the tail of the animation.
+                  style={{ animationDelay: `${i * 60}ms` }}
                 >
                   <CardBack />
-                </motion.div>
-              </motion.div>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
+          )}
+
+          {phase === 'reveal' && (
+            /* Decorative: Result announces the outcome via aria-live. */
+            <div className="carousel" aria-hidden="true">
+              {visible.map((i) => (
+                <CarouselCard
+                  key={i}
+                  index={i}
+                  pos={pos}
+                  variation={strip[i]}
+                  isWinner={landed && i === WIN_INDEX}
+                  dimmed={landed && i !== WIN_INDEX}
+                  // Not index 0 - that one is standing in for the deck
+                  // and has to stay put, or the handoff flickers.
+                  fadeIn={entering && i !== 0}
+                  depth={Math.abs(i - centre)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      <p className="mixing__status">
-        {phase === 'shuffle' && 'mixing'}
-        {phase === 'reveal' && !reveal.landed && 'choosing'}
-      </p>
-      <p className="mixing__skip">tap to skip</p>
+      <div className="stage__under">
+        <p className="mixing__status">
+          {phase === 'shuffle' && 'mixing'}
+          {phase === 'reveal' && !landed && 'choosing'}
+        </p>
+      </div>
+
+      <div className="stage__foot">
+        <p className="mixing__skip">tap to skip</p>
+      </div>
     </div>
   )
 }

@@ -28,7 +28,7 @@ Actions**.
 
 Playwright is a `devDependency`, kept around for one-off visual
 verification during development - screenshotting the mix animation
-(shuffle → fan → reveal), mobile layout, etc. in headless Chromium instead
+(shuffle → carousel → land), mobile layout, etc. in headless Chromium instead
 of eyeballing `npm run dev` by hand. It's not a test suite (see "Not built
 yet" below) and nothing here runs in CI.
 
@@ -68,15 +68,16 @@ src/
     pick.js                   random pick, never the same twist twice in a
                               row
     summary.js                builds the Deal / Win / Twist result badges
-    timing.js                 the mix timeline, mirrored in global.css
-    sound.js                  desi percussion, synthesised with Web Audio
+    timing.js                 the mix timeline (single source of truth)
+    sound.js                  desi percussion, synthesised with Web Audio;
+                              owns the AudioContext lifecycle
     useMuted.js               mute preference, remembered in localStorage
     immersive.js              fullscreen + wake lock on mobile, entered on
                               tap
   components/
     Home.jsx                  Stage 1 - idle, big hero wordmark + tap-to-mix
                               card
-    Mixing.jsx                Stage 2 - shuffle → name spin → flip
+    Mixing.jsx                Stage 2 - shuffle → carousel → land
     Result.jsx                Stage 3 - name + up to 3 summary badges
     RulesSheet.jsx            Stage 4 - per-variation rules, "Show rules"
     HouseRulesSheet.jsx       Stage 5 - the four house rules, ☰ button
@@ -89,7 +90,8 @@ src/
   styles/
     global.css                colour + type tokens (Baloo Bhaijaan 2
                               wordmark, Baloo 2 everywhere else), reset, app
-                              shell
+                              shell, and the shared three-band stage layout
+                              that keeps the card in one place
     buttons.css               shared button shapes
 ```
 

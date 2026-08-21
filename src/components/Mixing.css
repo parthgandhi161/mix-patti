@@ -1,8 +1,5 @@
 /* Stage 2: everything else is gone, the screen dims, one thing moves. */
 .mixing {
-  align-items: center;
-  justify-content: center;
-  gap: 22px;
   background: radial-gradient(
       ellipse 70% 50% at 50% 45%,
       rgba(58, 28, 88, 0.55),
@@ -12,16 +9,26 @@
   cursor: pointer;
 }
 
-/* Fixed-height well so the card, the spinning name and the flip all
-   occupy the same space - no layout jump between phases. */
+/* One well that both phases draw into, so there's no layout jump
+   between them. No `perspective` and no 3D anywhere below - see the
+   comment on Mixing.jsx's component for why. */
 .mixing__well {
-  flex: 1;
   width: 100%;
+  height: 100%;
   display: grid;
+  /* Explicit tracks rather than `auto`: every child sizes itself with a
+     percentage of this box, which makes their intrinsic contribution
+     circular. Pinning the tracks removes the ambiguity. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   place-items: center;
-  perspective: 1100px; /* gives the flip real depth */
-  -webkit-perspective: 1100px;
   min-height: 0;
+}
+
+/* Both phases stack in the same cell. */
+.deck,
+.carousel {
+  grid-area: 1 / 1;
 }
 
 .mixing__status {
@@ -33,7 +40,6 @@
 }
 
 .mixing__skip {
-  padding-bottom: 12px;
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -47,14 +53,26 @@
    than all five cards juddering side to side at once. */
 .deck {
   position: relative;
-  width: min(58%, 215px);
+  width: var(--card-w);
   aspect-ratio: 5 / 7;
 }
 
+/* One cut, not a loop. With the i*85ms stagger the five cards finish at
+   640-980ms and then hold the rest keyframe, so the deck is guaranteed
+   still by the time the reveal takes over at TIMELINE.shuffle - which is
+   what lets that handoff be invisible (see the carousel below).
+   playShuffle's "deck squaring off" drum lands in the same stillness. */
 .deck__slot {
   position: absolute;
   inset: 0;
-  animation: cascadeCut 640ms ease-in-out infinite;
+  animation: cascadeCut 640ms ease-in-out both;
+}
+
+/* Only the top card casts a drop shadow. The four beneath are hidden
+   behind it, but their shadows would otherwise stack up outside the card
+   into a much darker halo than the single card that replaces the deck. */
+.deck__slot:not(:last-child) {
+  --card-drop: none;
 }
 
 @keyframes cascadeCut {
@@ -69,61 +87,11 @@
   }
 }
 
-/* --- phase 2: the fan-out reveal ------------------------------------
-   The deck spreads into a hand of face-down cards that bob up and down
-   like the game is still deciding, while the centre (hero) slot flips
-   through real card faces, decelerating (JS drives each turn's
-   duration via Framer Motion), and lands on the winner. On landing the
-   side cards slide away and fade, collapsing the fan back down to the
-   single winning card. Two CardFaces are stacked back-to-back ("flip
-   clock" trick) inside .reveal__flipper, whose rotateY is animated by
-   React. */
-.fan {
-  position: relative;
-  width: min(58%, 210px);
-  aspect-ratio: 5 / 7;
-  display: grid;
-  place-items: center;
-  transform-style: preserve-3d;
-  -webkit-transform-style: preserve-3d;
-}
-
-.fan__slot {
-  position: absolute;
-  inset: 0;
-}
-
-.fan__slot--side {
-  will-change: transform, opacity;
-}
-
-.fan__slot--hero {
-  z-index: 1;
-  transform-style: preserve-3d;
-  -webkit-transform-style: preserve-3d;
-}
-
-/* Idle up/down suspense while the fan is out and nothing's landed yet -
-   applied to a child of .fan__slot--side so it layers on top of that
-   slot's own (JS-driven) spread transform instead of overwriting it. */
-.fan__bob {
-  width: 100%;
-  height: 100%;
-}
-
-.fan__bob--active {
-  animation: fanBob 1100ms ease-in-out infinite;
-}
-
-@keyframes fanBob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8%);
-  }
-}
+/* --- phase 2: the reveal --------------------------------------------
+   Real card faces slide right-to-left through the centre, shrinking and
+   fading as they move away from it, decelerating and landing on the
+   winner. On landing every card but the winner fades out, leaving it
+   alone in exactly the place the result card appears. */
 
 .reveal__glow {
   position: absolute;
@@ -153,21 +121,68 @@
   }
 }
 
-.reveal__flipper {
-  position: relative;
+/* --- the travelling strip ------------------------------------------- */
+.carousel {
   width: 100%;
   height: 100%;
-  transform-style: preserve-3d;
-  -webkit-transform-style: preserve-3d;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none; /* taps fall through to tap-to-skip */
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 8%,
+    #000 92%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 8%,
+    #000 92%,
+    transparent 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
-.reveal__face {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+/* Outer: where the card is (travel + the one-shot landing fade-out). */
+.carousel__slot {
+  grid-area: 1 / 1;
+  width: var(--card-w);
+  will-change: transform;
+  transition: opacity 320ms ease;
 }
 
-.reveal__face--b {
-  transform: rotateY(180deg);
+/* Every card but the winner clears out once it lands, so the winner is
+   alone on screen before Result crossfades in over the top of it. */
+.carousel__slot--dimmed {
+  opacity: 0;
+}
+
+/* At the handoff the centre slot is a card back standing in for the deck,
+   so it has to stay put - but its neighbours would otherwise pop into
+   existence beside it. They fade in instead. The class is removed once
+   the animation is done, or fill-mode would pin opacity at 1 and stop
+   --dimmed above from ever taking effect. */
+.carousel__slot--in {
+  animation: slotIn 260ms ease-out both;
+}
+
+@keyframes slotIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Inner: how visible the card is, by distance from centre. */
+.carousel__card {
+  position: relative; /* containing block for .reveal__glow */
+  width: 100%;
+  will-change: opacity;
 }

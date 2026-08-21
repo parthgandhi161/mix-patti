@@ -8,18 +8,20 @@
 const WIN_FLIPS = /worst|both win|closest|between|highest single/i
 
 function dealLabel(variation) {
-  let label =
-    variation.cardsPerPlayer === 0
-      ? 'no hand'
-      : `${variation.cardsPerPlayer} ${
-          variation.cardsPerPlayer === 1 ? 'card' : 'cards'
-        } each`
+  const n = variation.cardsPerPlayer
 
+  // Table cards mean a third badge (they always pair with a joker or a
+  // long win label), and the full "3 cards each · 5 on table" wording
+  // pushes the row onto a second line at phone width. Drop to the terse
+  // form only in that case - the common two-badge result keeps the
+  // friendlier wording.
   if (variation.tableCards > 0) {
-    label += ` · ${variation.tableCards} on table`
+    const each = n === 0 ? 'none' : `${n} each`
+    return `${each} · ${variation.tableCards} table`
   }
 
-  return label
+  if (n === 0) return 'no hand'
+  return `${n} ${n === 1 ? 'card' : 'cards'} each`
 }
 
 function winLabel(variation) {

@@ -9,12 +9,12 @@ import './Home.css'
 export function Home({ onMix }) {
   return (
     <div className="stage home">
-      <div className="home__middle">
-        <header className="home__head">
-          <h1 className="home__wordmark">Mix Patti</h1>
-          <p className="home__tagline">20 twists on Teen Patti</p>
-        </header>
+      <header className="home__head">
+        <h1 className="home__wordmark">Mix Patti</h1>
+        <p className="home__tagline">20 twists on Teen Patti</p>
+      </header>
 
+      <div className="stage__card">
         <button
           type="button"
           className="home__cardBtn"
@@ -23,14 +23,17 @@ export function Home({ onMix }) {
         >
           <CardBack className="home__card" />
         </button>
+      </div>
+
+      <div className="stage__under">
         <p className="home__hint">tap to mix</p>
       </div>
 
-      <footer className="home__foot">
+      <div className="stage__foot">
         <button type="button" className="btn btn--gold" onClick={onMix}>
           Mix a twist
         </button>
-      </footer>
+      </div>
     </div>
   )
 }

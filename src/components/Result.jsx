@@ -12,11 +12,13 @@ import './Result.css'
 export function Result({ variation, onMixAgain, onShowRules }) {
   return (
     <div className="stage result">
-      <div className="result__main">
+      <div className="stage__card">
         <CardFace variation={variation} className="result__card" shimmer />
+      </div>
 
-        {/* aria-live so a screen reader announces each new mix as one
-            flowing string; the visible pills are decorative duplicates. */}
+      {/* aria-live so a screen reader announces each new mix as one
+          flowing string; the visible pills are decorative duplicates. */}
+      <div className="stage__under">
         <div className="result__badges" aria-live="polite">
           <span className="sr-only">{summarise(variation)}</span>
           {summariseBadges(variation).map((badge) => (
@@ -29,7 +31,9 @@ export function Result({ variation, onMixAgain, onShowRules }) {
             </span>
           ))}
         </div>
+      </div>
 
+      <div className="stage__foot">
         <button
           type="button"
           className="btn btn--outline result__rules"
@@ -37,9 +41,7 @@ export function Result({ variation, onMixAgain, onShowRules }) {
         >
           Show rules
         </button>
-      </div>
 
-      <footer className="result__foot">
         <button
           type="button"
           className="btn btn--gold result__mix"
@@ -47,7 +49,7 @@ export function Result({ variation, onMixAgain, onShowRules }) {
         >
           <span aria-hidden="true">↻</span> Mix again
         </button>
-      </footer>
+      </div>
     </div>
   )
 }

@@ -1,12 +1,12 @@
+/* Layout comes from .stage's three bands in global.css - this file only
+   styles what goes inside them. */
 .home {
-  justify-content: space-between;
-  align-items: center;
   text-align: center;
-  gap: 16px;
 }
 
 .home__head {
-  margin-bottom: 4px;
+  grid-row: 1;
+  align-self: center;
 }
 
 .home__wordmark {
@@ -30,21 +30,9 @@
   color: var(--lav);
 }
 
-.home__middle {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 18px;
-  width: 100%;
-  min-height: 0;
-}
-
 /* The card itself is the primary tap target - a big, obvious one. */
 .home__cardBtn {
-  width: min(62%, 230px);
-  max-height: 100%;
+  width: var(--card-w);
   border-radius: 18px;
   animation: breathe 4.5s ease-in-out infinite;
 }
@@ -58,13 +46,16 @@
   outline-offset: 8px;
 }
 
+/* Float only, no tilt: the card carries straight through into the mixing
+   stage, and a rotation here means it hands over at whatever arbitrary
+   angle the loop happened to be at, then snaps flat. */
 @keyframes breathe {
   0%,
   100% {
-    transform: translateY(0) rotate(-1.2deg);
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(-9px) rotate(1.2deg);
+    transform: translateY(-9px);
   }
 }
 
@@ -86,7 +77,3 @@
   }
 }
 
-.home__foot {
-  width: 100%;
-  padding-bottom: 10px;
-}

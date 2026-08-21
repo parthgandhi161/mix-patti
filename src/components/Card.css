@@ -22,10 +22,12 @@
     ),
     linear-gradient(160deg, #43206a, #2a1240 55%, #1d0c2e);
   border: 1px solid rgba(244, 198, 74, 0.35);
+  /* The drop shadow is a variable so stacked backs (the mixing deck) can
+     switch it off on all but the top card - see Mixing.css. */
   box-shadow:
     inset 0 0 0 6px rgba(22, 8, 33, 0.55),
     inset 0 0 0 7px rgba(244, 198, 74, 0.28),
-    0 18px 40px rgba(0, 0, 0, 0.5);
+    var(--card-drop, 0 18px 40px rgba(0, 0, 0, 0.5));
 }
 
 /* Diagonal cross-hatch, the classic card-back texture. */
@@ -184,5 +186,25 @@
 @keyframes shimmerSweep {
   to {
     transform: translateX(130%);
+  }
+}
+
+/* The landing pop. Lives on .card rather than the carousel wrapper above
+   it, because that wrapper's transform is a motion value the reveal
+   tween owns - stacking a CSS animation on it would fight for the same
+   property. Two elements, two transforms, no conflict. */
+.carousel__card--landed .card {
+  animation: landPop 300ms ease-out both;
+}
+
+@keyframes landPop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
   }
 }

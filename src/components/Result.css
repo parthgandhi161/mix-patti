@@ -1,36 +1,13 @@
-.result {
-  justify-content: space-between;
-  align-items: center;
-  gap: 18px;
-  animation: resultIn 320ms ease-out both;
-}
-
-@keyframes resultIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.result__main {
-  flex: 1;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 18px;
-  min-height: 0;
-}
+/* No fade-in of its own: App's AnimatePresence already crossfades the
+   stages, and stacking a second opacity animation on top made the
+   arrival read as two separate fades. Layout comes from .stage's three
+   bands in global.css. */
 
 .result__card {
-  width: min(78%, 280px);
-  flex-shrink: 1;
+  width: var(--card-w);
   /* A quiet resting-state loop once the card has landed - the shimmer
-     sweep and fade-in are one-shot, so without this the card just sits
-     dead still. Delayed past both so it doesn't fight them. */
+     sweep and the stage crossfade are one-shot, so without this the card
+     just sits dead still. Delayed past both so it doesn't fight them. */
   animation: cardBreathe 5s ease-in-out 500ms infinite;
 }
 
@@ -53,17 +30,21 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   max-width: 100%;
 }
 
+/* Sized so the widest case - a deal label, a win label and the joker
+   star, which 5 of the 20 variations produce - still fits on one line at
+   phone width. Two lines would collide with the buttons below, since
+   --band-under reserves a single line. */
 .result__badge {
   display: inline-flex;
   align-items: center;
-  padding: 6px 13px;
+  padding: 6px 9px;
   border-radius: 999px;
   border: 1px solid transparent;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-align: center;
@@ -95,11 +76,6 @@
   font-size: 15px;
   padding: 11px 20px;
   min-height: 46px;
-}
-
-.result__foot {
-  width: 100%;
-  padding-bottom: 10px;
 }
 
 .result__mix {

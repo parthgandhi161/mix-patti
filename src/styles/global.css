@@ -26,10 +26,9 @@
   --font-head: "Baloo 2", system-ui, sans-serif;
   --font-body: var(--font-head);
 
-  /* One place to retune the whole mix timeline. The JS reads these
-     same durations from src/lib/timing.js - keep the two in sync. */
-  --dur-shuffle: 1000ms;
-  --dur-reveal: 7000ms; /* TEMP: slowed for mobile flip diagnosis, see timing.js */
+  /* Load-bearing: .appHeader is pinned to this, and .stage's --chrome
+     subtracts it when working out how tall the card can be. */
+  --header-h: 56px;
 }
 
 /* --- reset ---------------------------------------------------- */
@@ -124,9 +123,24 @@ button {
 }
 
 /* Extends the shuffle-stage dim (see .appHeader--dim) into the shell's
-   own safe-area padding, so the notch/home-indicator strips dim too. */
-.shell--dim {
+   own safe-area padding, so the notch/home-indicator strips dim too.
+   Done as a fading overlay rather than by swapping .shell's background,
+   because a gradient and a flat colour don't interpolate - swapping them
+   pops. z-index: -1 keeps it above .shell's own background but behind
+   every in-flow child. */
+.shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background: var(--mixing-bg);
+  opacity: 0;
+  transition: opacity 260ms ease;
+  pointer-events: none;
+}
+
+.shell--dim::before {
+  opacity: 1;
 }
 
 /* Belt-and-braces for the same dim: on mobile, 100dvh can briefly lag
@@ -157,14 +171,96 @@ body.is-mixing {
   }
 }
 
-/* Every stage fills the shell and stacks on the same grid cell, so
-   we can cross-fade between them without any layout shift. */
+/* Every stage fills the shell and stacks in the same place, so we can
+   cross-fade between them without any layout shift.
+
+   All three share one four-band grid - title, card, caption, controls -
+   with three of the four at fixed heights. That's what makes the
+   crossfades seamless: the card sits in the same box on every stage, so
+   it neither moves nor resizes going from Home to the mix to the result.
+   It's one continuous object.
+
+   The card row is `auto`, sized exactly to the card, so it has no slack
+   to donate. All leftover height goes to the controls row instead -
+   which is why the caption stays a fixed 14px under the card at every
+   viewport height, and a tall screen just opens up between the summary
+   and the buttons. (It used to be the other way round: the card floated
+   centred in a `1fr` row and the slack piled up under it - 83px on a
+   tall screen - while the buttons crushed against the credit line.)
+
+   Change a band height and you shift the card on all three stages at
+   once, which is the point - they can't drift apart. */
 .stage {
   position: absolute;
   inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows:
+    var(--band-top) auto var(--band-under)
+    minmax(var(--band-bottom), 1fr);
+  justify-items: center;
+  padding: 20px;
+
+  /* Widest the card is ever allowed to get. Also keeps the carousel's
+     neighbour cards peeking - grow this too far and they're clipped
+     away entirely. */
+  --card-cap: min(74%, 264px);
+  /* All measured from real content: Home's wordmark + tagline need 84px,
+     one line of badge pills is 31 on top of its 14px gap to the card,
+     and Result's two stacked buttons need 140. */
+  --band-top: 88px;
+  --band-under: 52px;
+  --band-bottom: 140px;
+
+  /* Everything that isn't the card, single-sourced so it can't drift
+     out of step with the rows above. */
+  --chrome: calc(
+    var(--header-h) + 40px + var(--band-top) + var(--band-under) +
+      var(--band-bottom) + env(safe-area-inset-top) +
+      env(safe-area-inset-bottom)
+  );
+
+  /* One card size for the whole app: Home's face-down card, the mixing
+     deck, the carousel and the result card all read this. The smaller of
+     a width cap and a height fit, because a card is 5:7 and either axis
+     can be the binding one - height binds on a short screen, width on a
+     tall one. */
+  --card-w: min(var(--card-cap), calc((100dvh - var(--chrome)) * 5 / 7));
+}
+
+/* Band 2 - whichever card the stage is currently showing. */
+.stage__card {
+  grid-row: 2;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+}
+
+/* Band 3 - one line describing the card, kept close to it. */
+.stage__under {
+  grid-row: 3;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 14px;
+}
+
+/* Band 4 - the stage's own controls, bottom-aligned so the primary
+   button sits at the same height regardless of what's above it, and
+   clear of the absolutely-positioned .credit in the last ~22px. */
+.stage__foot {
+  grid-row: 4;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-bottom: 18px;
 }
 
 @media (prefers-reduced-motion: reduce) {
