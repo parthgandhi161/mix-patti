@@ -110,6 +110,13 @@ button {
 
 .shell {
   position: relative;
+  /* Gives .shell::before's z-index: -1 something to resolve against.
+     Without this, .shell has no stacking context of its own, so the
+     negative z-index escapes to the document root and paints *behind*
+     .shell's own background instead of in front of it - which hid the
+     dim overlay everywhere nothing else painted over it (the safe-area
+     padding strips), showing as a color seam at the top/bottom edges. */
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   width: 100%;
