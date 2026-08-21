@@ -22,7 +22,7 @@ export function FloatingSuits({ count = 12 }) {
       y: Math.random() * 100,
       size: 18 + Math.random() * 30,
       rotate: Math.random() * 40 - 20,
-      duration: 16 + Math.random() * 14,
+      duration: 9 + Math.random() * 7,
       delay: Math.random() * -20,
       opacity: 0.05 + Math.random() * 0.07,
     })),
