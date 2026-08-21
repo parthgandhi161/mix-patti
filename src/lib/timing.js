@@ -7,7 +7,9 @@
  */
 export const TIMELINE = {
   shuffle: 1000, // quick riffle shuffle: "mixing"
-  reveal: 2900, // face-up card carousel that decelerates and lands: "choosing"
+  // TEMP: slowed 2900 -> 7000 for on-device diagnosis of the mobile
+  // backface-visibility flash - revert once confirmed fixed.
+  reveal: 7000, // face-up card carousel that decelerates and lands: "choosing"
 }
 
 export const TOTAL_MS = TIMELINE.shuffle + TIMELINE.reveal

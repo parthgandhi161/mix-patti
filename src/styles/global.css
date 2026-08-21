@@ -29,7 +29,7 @@
   /* One place to retune the whole mix timeline. The JS reads these
      same durations from src/lib/timing.js - keep the two in sync. */
   --dur-shuffle: 1000ms;
-  --dur-reveal: 2900ms;
+  --dur-reveal: 7000ms; /* TEMP: slowed for mobile flip diagnosis, see timing.js */
 }
 
 /* --- reset ---------------------------------------------------- */
@@ -127,6 +127,15 @@ button {
    own safe-area padding, so the notch/home-indicator strips dim too. */
 .shell--dim {
   background: var(--mixing-bg);
+}
+
+/* Belt-and-braces for the same dim: on mobile, 100dvh can briefly lag
+   the real visual viewport while the browser's toolbar shows/hides
+   (often right as .shell--dim kicks in, since the same tap can trigger
+   fullscreen/wake-lock). If that gap ever exposes whatever's behind
+   .shell, it should be this dim tone, not body's default gradient. */
+body.is-mixing {
+  background-color: var(--mixing-bg);
 }
 
 /* Everything below the header - the three crossfading stages live here,

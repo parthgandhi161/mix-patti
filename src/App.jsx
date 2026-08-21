@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import variations from './data/variations.json'
 import { Home } from './components/Home'
@@ -42,6 +42,13 @@ export default function App() {
   const [overlay, setOverlay] = useState(null) // null | 'rules' | 'house'
   const [muted, toggleMuted] = useMuted()
   const enterImmersive = useImmersive()
+
+  // Mirrors .shell--dim/.appHeader--dim one level higher, on <body>
+  // itself - see the .is-mixing rule in global.css for why.
+  useEffect(() => {
+    document.body.classList.toggle('is-mixing', stage === 'mixing')
+    return () => document.body.classList.remove('is-mixing')
+  }, [stage])
 
   const showChrome = stage !== 'mixing' && !overlay
   // The header (hamburger + wordmark + mute/fullscreen) is identical on

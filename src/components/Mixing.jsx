@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useMotionValue, useTransform } from 'framer-motion'
 import { CardBack, CardFace } from './Card'
 import { TIMELINE, prefersReducedMotion } from '../lib/timing'
 import { playShuffle, playFlip, playLand, stopAll } from '../lib/sound'
@@ -24,12 +24,12 @@ function fanTransform(offset, fanned, landed) {
 }
 
 /**
- * Stage 2 - the mix. Two phases, ~3.9s total:
+ * Stage 2 - the mix. Two phases (durations from `TIMELINE`, currently
+ * slowed for on-device mobile-flip diagnosis - see timing.js):
  *
- *   shuffle (1.0s)  a riffling face-down deck            "mixing"
- *   reveal  (2.9s)  a single card flipping through real  "choosing"
- *                   card faces, decelerating, landing on
- *                   the winner
+ *   shuffle  a riffling face-down deck                    "mixing"
+ *   reveal   a single card flipping through real card      "choosing"
+ *            faces, decelerating, landing on the winner
  *
  * The winning variation is decided by the parent *before* this
  * mounts, so the carousel is pure theatre - it always lands on
@@ -56,6 +56,25 @@ export function Mixing({ variation, variations, muted, onFinish }) {
   }))
   const [fanned, setFanned] = useState(false)
   const done = useRef(false)
+
+  // Some mobile WebKit builds stop honouring `backface-visibility: hidden`
+  // once the rotating parent's transform is a JS-driven matrix3d (which is
+  // how Framer Motion animates rotateY) - the away-facing card ghosts
+  // through instead of staying hidden. Rather than trust the browser's 3D
+  // compositing, track the live rotation ourselves and explicitly hide
+  // whichever face is turned away, in sync with the same 90deg boundary
+  // backface-visibility would use.
+  const rotateY = useMotionValue(0)
+  const facingFront = useTransform(rotateY, (v) => {
+    const f = ((v % 360) + 360) % 360
+    return f < 90 || f > 270
+  })
+  const faceAVisibility = useTransform(facingFront, (front) =>
+    front ? 'visible' : 'hidden',
+  )
+  const faceBVisibility = useTransform(facingFront, (front) =>
+    front ? 'hidden' : 'visible',
+  )
 
   const finish = () => {
     if (done.current) return
@@ -120,8 +139,11 @@ export function Mixing({ variation, variations, muted, onFinish }) {
     const cycle = () => {
       const elapsed = performance.now() - start
       const progress = Math.min(1, elapsed / TIMELINE.reveal)
-      const gap = 90 + 310 * progress ** 2.4
-      const flipMs = Math.max(90, Math.min(260, gap * 0.55))
+      // TEMP: scaled up (roughly 2x) alongside TIMELINE.reveal for
+      // on-device diagnosis of the mobile backface-visibility flash -
+      // revert alongside timing.js once confirmed fixed.
+      const gap = 180 + 620 * progress ** 2.4
+      const flipMs = Math.max(180, Math.min(520, gap * 0.55))
       const isFinal = progress >= 1
       const halfMs = flipMs / 2
 
@@ -232,6 +254,7 @@ export function Mixing({ variation, variations, muted, onFinish }) {
               />
               <motion.div
                 className="reveal__flipper"
+                style={{ rotateY }}
                 animate={{
                   rotateY: reveal.rotation,
                   scale: reveal.landed ? [1, 1.06, 1] : 1,
@@ -245,12 +268,18 @@ export function Mixing({ variation, variations, muted, onFinish }) {
                   },
                 }}
               >
-                <div className="reveal__face reveal__face--a">
+                <motion.div
+                  className="reveal__face reveal__face--a"
+                  style={{ visibility: faceAVisibility }}
+                >
                   <CardFace variation={reveal.content} shimmer={reveal.landed} />
-                </div>
-                <div className="reveal__face reveal__face--b">
+                </motion.div>
+                <motion.div
+                  className="reveal__face reveal__face--b"
+                  style={{ visibility: faceBVisibility }}
+                >
                   <CardBack />
-                </div>
+                </motion.div>
               </motion.div>
             </div>
           </div>

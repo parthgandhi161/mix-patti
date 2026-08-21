@@ -64,7 +64,7 @@
     opacity: 0.82;
   }
   50% {
-    transform: translateY(-10%) rotate(-2deg) scale(1.035);
+    transform: translateY(-16%) rotate(-3deg) scale(1.05);
     opacity: 1;
   }
 }
@@ -84,6 +84,8 @@
   aspect-ratio: 5 / 7;
   display: grid;
   place-items: center;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 .fan__slot {
@@ -97,6 +99,8 @@
 
 .fan__slot--hero {
   z-index: 1;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 /* Idle up/down suspense while the fan is out and nothing's landed yet -
