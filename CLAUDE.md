@@ -50,8 +50,17 @@ build only surfaces once it's already live.
 - `src/lib/` is small framework-free helper modules (random pick, sound
   synthesis, timing constants, summary-badge text) - keep logic here
   testable and out of components where practical.
-- `src/data/variations.json` is the content: the 20 Teen Patti twists.
-  Treat its schema as fixed unless the user asks to change it.
+- `src/data/variations.json` is the content: the 21 Teen Patti twists.
+  Treat its schema as fixed unless the user asks to change it. When adding
+  or removing entries, also check for two things that don't come from the
+  schema: the hardcoded twist count in `Home.jsx`'s tagline and the
+  `README.md` layout table, and whether the change shifts how many
+  variations hit the three-badge "widest case" noted below (re-run the
+  check there rather than hand-counting). Before adding a new variation,
+  check `alsoKnownAs` across the file for overlap and prune for mechanical
+  overlap, not just count - a twist that only tweaks a number relative to
+  an existing one (e.g. a fourth "flip a card to set the joker" variant)
+  adds upkeep without adding anything a player would notice at the table.
 
 See the README's "Layout" section for the full file-by-file map.
 
@@ -103,9 +112,10 @@ See the README's "Layout" section for the full file-by-file map.
   - `--band-under` reserves exactly **one** line of Result's badge pills.
     Their font/padding in `Result.css` and the terse `dealLabel` wording
     for table-card variations in `src/lib/summary.js` exist to keep the
-    widest case (deal + win + `★ Joker`, which 5 of the 20 variations
+    widest case (deal + win + `★ Joker`, which 4 of the 21 variations
     produce) on that one line. Widen the pills and they wrap into the
-    buttons.
+    buttons. To recheck this count after editing `variations.json`:
+    `node -e "const d=require('./src/data/variations.json');console.log(d.filter(v=>v.tableCards>0&&v.joker!==null).length)"`.
 - **No 3D in the mix.** The reveal is `translateX` + `scale` + `opacity`
   only. Mobile WebKit stops honouring `backface-visibility: hidden` once
   the rotating parent's transform is a JS-driven `matrix3d`, which ghosts

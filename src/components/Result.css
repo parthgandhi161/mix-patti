@@ -35,7 +35,7 @@
 }
 
 /* Sized so the widest case - a deal label, a win label and the joker
-   star, which 5 of the 20 variations produce - still fits on one line at
+   star, which 4 of the 21 variations produce - still fits on one line at
    phone width. Two lines would collide with the buttons below, since
    --band-under reserves a single line. */
 .result__badge {
