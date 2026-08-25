@@ -124,26 +124,6 @@
     "notes": "Some groups play 'closest to 999 or 111' so a terrible hand can also win. Decide before dealing."
   },
   {
-    "id": "banko",
-    "name": "Banko",
-    "alsoKnownAs": [
-      "In-Between",
-      "Cobra Betting"
-    ],
-    "cardsPerPlayer": 0,
-    "tableCards": 3,
-    "joker": null,
-    "setup": [
-      "Turn 2 cards face up in the middle"
-    ],
-    "play": [
-      "The active player bets on whether the next card drawn will fall numerically between those two cards",
-      "Flip the third card"
-    ],
-    "winner": "You win if the third card lands strictly between the two. Matching either card exactly means you lose",
-    "notes": "Very fast, pure luck, no hand at all. Great filler round between longer variations."
-  },
-  {
     "id": "joker-hunt",
     "name": "Joker Hunt",
     "alsoKnownAs": [
@@ -224,29 +204,6 @@
     ],
     "winner": "The best hand and the worst hand both win. Muflis ranking decides the worst",
     "notes": "Keeps people in longer since a garbage hand is still live. Works well with a large table."
-  },
-  {
-    "id": "kiss-miss-bhabhi",
-    "name": "Kiss Miss Bhabhi",
-    "alsoKnownAs": [
-      "Kiss Miss and Tell"
-    ],
-    "cardsPerPlayer": 3,
-    "tableCards": 3,
-    "joker": "The Kiss rank only",
-    "setup": [
-      "Deal 3 cards to each player",
-      "Place 3 cards face down in the middle"
-    ],
-    "play": [
-      "Reveal the middle cards one at a time with a betting round after each",
-      "1st card is Kiss. Anyone holding a card of that rank has it as a joker",
-      "2nd card is Miss. It does nothing at all, it is a dead card",
-      "3rd card is Bhabhi. Anyone holding that rank must reveal it, and it counts as face value only",
-      "The Miss round exists purely as a betting round with no new information"
-    ],
-    "winner": "Best standard hand",
-    "notes": "Many versions of this exist. Lock your group's version once and stick to it."
   },
   {
     "id": "gol-chakkar",
@@ -410,6 +367,73 @@
       "The round winner must beat the side hand with their own hand"
     ],
     "winner": "The round winner takes the pot only if their hand beats the side hand. If the side hand wins or ties, nobody takes the pot and it rolls over into the next round",
-    "notes": "Pot can roll over several rounds and get big. Winning the table is only half the job. Decide upfront whether a tie counts as a loss (recommended: yes)."
+    "notes": "Pot can roll over several rounds and get big. Decide upfront whether a tie counts as a loss (recommended: yes)."
+  },
+  {
+    "id": "sabka-hissa",
+    "name": "Sabka Hissa",
+    "alsoKnownAs": [
+      "Baantu Sabko",
+      "Everyone's Share"
+    ],
+    "cardsPerPlayer": 3,
+    "tableCards": 1,
+    "joker": null,
+    "setup": [
+      "Deal 3 cards face down to each player",
+      "Flip 1 card face up in the middle before betting starts"
+    ],
+    "play": [
+      "The flipped card belongs to every player at the table",
+      "At showdown, each player plays their best 3 out of their own 3 cards plus the shared card"
+    ],
+    "winner": "Best standard hand using your best 3 of 4 cards",
+    "notes": "The one variation where the dealer's flip helps the whole table instead of picking a winner or a victim."
+  },
+  {
+    "id": "bhoot-wale-patte",
+    "name": "Bhoot Wale Patte",
+    "alsoKnownAs": [
+      "The Haunted Cards",
+      "Shraap Aayega"
+    ],
+    "cardsPerPlayer": 3,
+    "tableCards": 2,
+    "joker": null,
+    "setup": [
+      "Dealer secretly sets aside 2 cards face down before dealing, unseen by anyone including the dealer",
+      "Deal 3 cards face down to each player"
+    ],
+    "play": [
+      "Play a fully normal round, betting and folding as usual, down to the final two players",
+      "At the show, reveal both secret cards. Those 2 ranks are cursed for this hand",
+      "Either finalist holding a cursed rank is disqualified instantly, regardless of hand strength"
+    ],
+    "winner": "The clean finalist wins automatically if the other is cursed. If both are clean, best standard hand wins. If both are cursed, the pot rolls into the next hand",
+    "notes": "A trail of Aces can still lose if Aces turn out to be cursed. The best hand in the room can lose without a single comparison."
+  },
+  {
+    "id": "kismat-ka-jugad",
+    "name": "Kismat Ka Jugad",
+    "alsoKnownAs": [
+      "Wanna Get Rich?",
+      "Double Ya Dooba"
+    ],
+    "cardsPerPlayer": 3,
+    "tableCards": 0,
+    "joker": null,
+    "setup": [
+      "Boot for this hand is double the usual amount",
+      "Deal 3 cards face down to each player"
+    ],
+    "play": [
+      "First betting round plays as normal",
+      "To exchange 1 card from your hand for a fresh one from the deck, you must first double the current chaal",
+      "Discard the unwanted card face down and draw a replacement",
+      "Capped at 2 swaps total per player for the whole hand",
+      "Normal betting continues between swaps"
+    ],
+    "winner": "Best standard hand",
+    "notes": "Paying double to sit in, then double again to fix your hand, is either smart play or a trap. Usually a trap."
   }
 ]
