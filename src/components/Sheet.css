@@ -128,6 +128,89 @@
   font-size: 12px;
 }
 
+/* --- Stage 4 (RulesSheet) - dense/explain mode toggle and stepper - */
+
+.rulesSheet__headActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.rulesSheet__modeToggle {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--night-2);
+  border: 1px solid var(--line);
+  font-size: 16px;
+  color: var(--ivory);
+  transition: background 140ms ease, transform 140ms ease, border-color 140ms ease;
+}
+
+.rulesSheet__modeToggle:hover {
+  background: var(--night-3);
+}
+
+.rulesSheet__modeToggle:active {
+  transform: scale(0.92);
+}
+
+.rulesSheet__modeToggle[aria-pressed='true'] {
+  border-color: var(--teal);
+}
+
+.rulesSheet__step {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: rulesStepIn 220ms ease-out both;
+}
+
+@keyframes rulesStepIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rulesSheet__stepText {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: clamp(24px, 7.5vw, 28px);
+  line-height: 1.32;
+  color: var(--ivory);
+}
+
+.rulesSheet__stepNav {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.rulesSheet__navBtn {
+  flex-shrink: 0;
+}
+
+.rulesSheet__stepCount {
+  flex-shrink: 0;
+  font-family: var(--font-head);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--lav-dim);
+}
+
 /* --- Stage 6 (BrowseSheet) - search input and the row list ------- */
 
 .browseSheet__search {

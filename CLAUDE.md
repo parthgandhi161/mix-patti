@@ -57,6 +57,18 @@ net, not a substitute for a fast local loop.
   `current` (the mixed winner). `players` (PlayersSheet) is the optional
   player roster + rotating dealer, opened from Result's band-1 dealer line;
   it has no such nested layering. There's no router - it's all one page.
+- RulesSheet has two reading modes, toggled by a button in `.sheet__head`:
+  dense (today's always-scrolling section list, still the default) and
+  "explain" (one step at a time - joker, then each `setup`/`play` entry
+  individually, then winner, then notes - for a dealer walking a table
+  through a twist out loud). The choice persists across sessions via
+  `mixpatti.rulesMode` in `localStorage` (`useReadingMode.js`, same shape
+  as `useMuted.js`); the step index itself does not persist and always
+  starts at 0, since RulesSheet is always a fresh mount on open (neither
+  the `overlay === 'rules'` path nor the `browseTarget` path ever
+  re-renders it in place with a different `variation`). RulesSheet-only
+  classes (`rulesSheet__*`) live in the shared `Sheet.css`, per that
+  file's existing per-component prefix convention.
 - `src/components/` is one component + one same-named `.css` file per
   piece of UI (`Card.jsx`/`Card.css`, etc.) - no CSS modules, no styled-
   components. Class names follow a light BEM convention:

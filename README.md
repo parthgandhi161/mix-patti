@@ -95,6 +95,8 @@ src/
     sound.js                  desi percussion, synthesised with Web Audio;
                               owns the AudioContext lifecycle
     useMuted.js                mute preference, remembered in localStorage
+    useReadingMode.js          RulesSheet's dense/explain toggle,
+                              remembered in localStorage
     usePlayers.js              optional player roster + rotating dealer,
                               remembered in localStorage
     immersive.js               fullscreen + wake lock on mobile, entered on
@@ -109,7 +111,10 @@ src/
     Result.jsx / Result.css   Stage 3 - name + up to 3 summary badges; once
                               a player roster exists, also uses band 1 for
                               the dealer line
-    RulesSheet.jsx            Stage 4 - per-variation rules, "Show rules"
+    RulesSheet.jsx            Stage 4 - per-variation rules, "Show rules";
+                              toggle in the sheet head switches between the
+                              dense list and a one-step-at-a-time "explain"
+                              mode for reading rules aloud at the table
     HouseRulesSheet.jsx       Stage 5 - the four house rules, ☰ button
     BrowseSheet.jsx           Stage 6 - searchable list of every twist, 📖
                               button; picking a row opens RulesSheet on top
