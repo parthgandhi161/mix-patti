@@ -106,18 +106,21 @@ src/
     Home.jsx / Home.css       Stage 1 - idle, big hero wordmark + tap-to-mix
                               card
     Mixing.jsx / Mixing.css   Stage 2 - shuffle → carousel → land
-    Result.jsx / Result.css   Stage 3 - name + up to 3 summary badges; the
-                              only stage that also uses band 1, for the
-                              optional dealer line
+    Result.jsx / Result.css   Stage 3 - name + up to 3 summary badges; once
+                              a player roster exists, also uses band 1 for
+                              the dealer line
     RulesSheet.jsx            Stage 4 - per-variation rules, "Show rules"
     HouseRulesSheet.jsx       Stage 5 - the four house rules, ☰ button
     BrowseSheet.jsx           Stage 6 - searchable list of every twist, 📖
                               button; picking a row opens RulesSheet on top
-    PlayersSheet.jsx          Stage 7 - optional roster + dealer rotation,
-                              opened from Result's band-1 dealer line
+    PlayersSheet.jsx          Stage 7 - optional roster + dealer rotation;
+                              opened from the header's add-players icon
+                              (empty roster) or Result's band-1 dealer
+                              line (once one exists)
     Sheet.css                 shared sheet chrome for stages 4, 5, 6 and 7
     Card.jsx / Card.css       shared card back / card face
-    Header.jsx / Header.css   centred small wordmark + mute toggle, shown on
+    Header.jsx / Header.css   centred small wordmark, mute + fullscreen +
+                              (empty roster only) add-players, shown on
                               every stage except the sheets
     MuteToggle.jsx / MuteToggle.css  the mute button, laid out inside Header
     FullscreenToggle.jsx / FullscreenToggle.css  requests fullscreen +

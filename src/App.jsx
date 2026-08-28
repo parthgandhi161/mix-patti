@@ -120,6 +120,8 @@ export default function App() {
           onToggleMute={toggleMuted}
           onHouseRules={() => setOverlay('house')}
           onBrowse={() => setOverlay('browse')}
+          hasPlayers={players.length > 0}
+          onOpenPlayers={() => setOverlay('players')}
           dim={stage === 'mixing'}
         />
       )}

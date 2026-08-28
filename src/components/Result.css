@@ -5,15 +5,14 @@
    is the only stage that also claims band 1 (--band-top, 88px), for the
    optional dealer line below. */
 
-/* Band 1 - only Result uses it, for the optional player-roster dealer
-   line (App.jsx threads dealerName/onOpenPlayers in). Empty roster and an
-   active dealer share this one element (toggled via the --empty
-   modifier) rather than swapping elements, so there's nothing to cause a
-   layout shift between the two states. grid-row: 1 only claims .stage's
+/* Band 1 - only Result uses it, and only once a roster exists (App.jsx
+   threads dealerName/onOpenPlayers in; while the roster is empty this
+   renders nothing at all - the entry point lives in the header instead,
+   see Header.jsx's add-players icon). grid-row: 1 only claims .stage's
    already-88px --band-top track - the same precedent as Home.css's
    .home__head - so it never touches --band-top/--chrome/--card-w, which
-   is what keeps .stage__card's box identical whether or not a roster
-   exists. */
+   is what keeps .stage__card's box identical whether or not this
+   element is present. */
 .result__dealer {
   grid-row: 1;
   align-self: center;
@@ -36,35 +35,6 @@
 
 .result__dealer:active {
   transform: scale(0.96);
-}
-
-/* Empty roster: a round "+" icon button, matching the header's own icon
-   buttons (.appHeader__icon / .mute / .fullscreenToggle) exactly - same
-   40px circle, night-3 fill, line border, and opacity/scale interaction -
-   rather than the gold "X deals" pill, so it reads as a real, familiar
-   tappable control instead of a quiet text hint that can go unnoticed.
-   justify-self: end (overriding .stage's justify-items: center, which
-   the populated pill above still uses) pins it to the same right edge
-   the header's mute button sits against, one row down - "beside sound"
-   without actually joining the header's own fixed-width 88px column,
-   which is already full on a touch device before fullscreen is entered
-   (FullscreenToggle + MuteToggle, 40+6+40 = 86px, no room for a third
-   icon at this size). */
-.result__dealer--empty {
-  justify-self: end;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--night-3);
-  border: 1px solid var(--line);
-  color: var(--ivory);
-  font-size: 20px;
-  font-weight: 400;
-  opacity: 0.75;
-  transition: opacity 160ms ease, transform 160ms ease;
 }
 
 .result__dealer--empty:hover,

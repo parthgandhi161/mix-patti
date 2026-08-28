@@ -134,12 +134,27 @@ See the README's "Layout" section for the full file-by-file map.
     buttons. To recheck this count after editing `variations.json`:
     `node -e "const d=require('./src/data/variations.json');console.log(d.filter(v=>v.tableCards>0&&v.joker!==null).length)"`.
   - Band 1 (`--band-top`, 88px) started out Home-only (`.home__head`,
-    the wordmark/tagline). Result now also claims it, for the optional
-    dealer line (`.result__dealer`) - anything placed there has to fit
-    inside the existing 88px, since `--band-top` feeds `--chrome`/
-    `--card-w` directly; don't grow the track itself. Mixing still leaves
-    it empty on purpose (that stage is dimmed/theatrical - a dealer name
-    there would be noise).
+    the wordmark/tagline). Result now also claims it, but only once a
+    player roster exists - `.result__dealer` (the "X deals" line) is
+    conditionally rendered, not always-present, and renders nothing at
+    all on an empty roster. Anything placed there has to fit inside the
+    existing 88px, since `--band-top` feeds `--chrome`/`--card-w`
+    directly; don't grow the track itself. Mixing still leaves it empty
+    on purpose (that stage is dimmed/theatrical - a dealer name there
+    would be noise). The empty-roster entry point lives in the header
+    instead (see below), not band 1 - so it's reachable from Home too,
+    before the first mix.
+  - `.appHeader`'s two side columns are 136px each (`Header.css`), not a
+    round number - it's sized for **three** 40px circular buttons, not
+    two, because the right side isn't a reliable 2-slot column:
+    `FullscreenToggle` shows/hides itself by platform and fullscreen
+    state (and never hides at all on iOS Safari, which has no Fullscreen
+    API - it shows a permanent "Add to Home Screen" hint there instead),
+    so it can coexist with `MuteToggle` AND the optional add-players icon
+    at the same time. Both columns widen together, symmetrically, purely
+    so the wordmark - centred in the middle track - stays exactly
+    centred regardless of how many icons actually render on either side;
+    don't widen only one side.
 - **No 3D in the mix.** The reveal is `translateX` + `scale` + `opacity`
   only. Mobile WebKit stops honouring `backface-visibility: hidden` once
   the rotating parent's transform is a JS-driven `matrix3d`, which ghosts

@@ -3,7 +3,15 @@
   z-index: 20;
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: 88px 1fr 88px;
+  /* 136px, not 88px: the right side isn't a reliable 2-slot column -
+     FullscreenToggle shows/hides itself by platform/state (permanently
+     on iOS, which has no Fullscreen API at all, until the app is
+     installed standalone), so it can coexist with MuteToggle AND the
+     optional add-players icon (3 * 40px + 2 * 6px gap = 132px). Both
+     columns widen together, symmetrically, so the wordmark - centred in
+     the middle track - stays exactly centred regardless of how many
+     icons actually render on either side. */
+  grid-template-columns: 136px 1fr 136px;
   align-items: center;
   /* Pinned rather than content-sized: .stage's --chrome subtracts this
      to work out how tall the card can be, so the two must agree. */
@@ -69,4 +77,22 @@
 
 .appHeader__word--hidden {
   visibility: hidden;
+}
+
+/* Below ~360px (iPhone SE's 320px viewport is the narrowest this app
+   tests against - see CLAUDE.md), 136px symmetric side columns leave too
+   little room for the wordmark's own un-shrinkable content width: a grid
+   item's default min-width is `auto`, so the middle 1fr track won't
+   shrink the wordmark below its natural size - it instead grows past the
+   remaining space and pushes the whole row wider than the header itself,
+   clipping the rightmost icon off-screen. The icons alone fit fine at
+   this width (272px of 288px available); it's specifically the wordmark
+   competing with a full three-icon right side that doesn't. Hiding it
+   below the breakpoint removes its grid-sizing contribution entirely -
+   simplest fix, and low-cost, since it's a redundant brand reminder
+   Home's own hero title already covers, not load-bearing information. */
+@media (max-width: 359px) {
+  .appHeader__word {
+    display: none;
+  }
 }

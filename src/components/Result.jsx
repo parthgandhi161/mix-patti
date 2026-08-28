@@ -112,14 +112,11 @@ export function Result({
 
   return (
     <div className="stage result">
-      <button
-        type="button"
-        className={`result__dealer${dealerName ? '' : ' result__dealer--empty'}`}
-        onClick={onOpenPlayers}
-        aria-label={dealerName ? undefined : 'Add players'}
-      >
-        {dealerName ? `${dealerName} deals` : <span aria-hidden="true">+</span>}
-      </button>
+      {dealerName && (
+        <button type="button" className="result__dealer" onClick={onOpenPlayers}>
+          {dealerName} deals
+        </button>
+      )}
 
       <div className="stage__card">
         <div className="result__cardWrap">
