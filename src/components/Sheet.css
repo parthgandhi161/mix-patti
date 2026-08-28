@@ -1,6 +1,6 @@
-/* Shared chrome for the two full-screen rule panels (Stage 4 and
-   Stage 5). Covers the whole .shell; only the close button dismisses
-   it - the mount/unmount slide is driven by Framer Motion in each
+/* Shared chrome for the three full-screen rule panels (Stage 4, 5, and
+   6). Covers the whole .shell; only the close button dismisses it -
+   the mount/unmount slide is driven by Framer Motion in each
    component, not by CSS keyframes here. */
 .sheet {
   position: absolute;
@@ -126,4 +126,83 @@
   font-family: var(--font-head);
   font-weight: 700;
   font-size: 12px;
+}
+
+/* --- Stage 6 (BrowseSheet) - search input and the row list ------- */
+
+.browseSheet__search {
+  flex-shrink: 0;
+}
+
+.browseSheet__input {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: var(--night-2);
+  border: 1px solid var(--line);
+  color: var(--ivory);
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+
+.browseSheet__input::placeholder {
+  color: var(--lav-dim);
+}
+
+.browseSheet__input:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.browseSheet__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.browseSheet__row {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--night-2);
+  border: 1px solid var(--line);
+  text-align: left;
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.browseSheet__row:hover,
+.browseSheet__row:focus-visible {
+  background: var(--night-3);
+}
+
+.browseSheet__row:active {
+  transform: scale(0.98);
+}
+
+.browseSheet__suit {
+  flex-shrink: 0;
+  width: 22px;
+  font-size: 20px;
+  line-height: 1;
+  text-align: center;
+}
+
+.browseSheet__name {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ivory);
+}
+
+.browseSheet__empty {
+  color: var(--lav);
+  font-size: 15px;
+  text-align: center;
+  padding: 24px 0;
 }

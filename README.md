@@ -82,8 +82,8 @@ public/
 src/
   main.jsx                    React entry point, mounts <App /> into #root
   App.jsx                     state machine: home → mixing → result, plus
-                              the rules / house-rules overlays and the
-                              header
+                              the rules / house-rules / browse overlays and
+                              the header
   data/variations.json        the 27 twists (schema untouched)
   lib/
     pick.js                   random pick, never the same twist twice in a
@@ -98,15 +98,18 @@ src/
     immersive.js               fullscreen + wake lock on mobile, entered on
                               tap
   components/                 one component + one same-named .css file per
-                              piece of UI, except RulesSheet.jsx and
-                              HouseRulesSheet.jsx, which share Sheet.css
+                              piece of UI, except RulesSheet.jsx,
+                              HouseRulesSheet.jsx, and BrowseSheet.jsx,
+                              which share Sheet.css
     Home.jsx / Home.css       Stage 1 - idle, big hero wordmark + tap-to-mix
                               card
     Mixing.jsx / Mixing.css   Stage 2 - shuffle → carousel → land
     Result.jsx / Result.css   Stage 3 - name + up to 3 summary badges
     RulesSheet.jsx            Stage 4 - per-variation rules, "Show rules"
     HouseRulesSheet.jsx       Stage 5 - the four house rules, ☰ button
-    Sheet.css                 shared sheet chrome for stages 4 and 5
+    BrowseSheet.jsx           Stage 6 - searchable list of every twist, 📖
+                              button; picking a row opens RulesSheet on top
+    Sheet.css                 shared sheet chrome for stages 4, 5 and 6
     Card.jsx / Card.css       shared card back / card face
     Header.jsx / Header.css   centred small wordmark + mute toggle, shown on
                               every stage except the sheets
@@ -125,4 +128,4 @@ src/
 
 ## Not built yet
 
-Nothing outstanding - all five stages are wired up and playable.
+Nothing outstanding - all six stages are wired up and playable.

@@ -6,6 +6,7 @@ import { Mixing } from './components/Mixing'
 import { Result } from './components/Result'
 import { RulesSheet } from './components/RulesSheet'
 import { HouseRulesSheet } from './components/HouseRulesSheet'
+import { BrowseSheet } from './components/BrowseSheet'
 import { FloatingSuits } from './components/FloatingSuits'
 import { Header } from './components/Header'
 import { Credit } from './components/Brand'
@@ -22,7 +23,7 @@ const FADE = {
 
 /**
  * The whole app is a three-state machine, plus an independent overlay
- * for the two rule sheets:
+ * for the rule sheets:
  *
  *   home  --tap-->  mixing  --animation ends / skip-->  result
  *     ^                                                   |
@@ -30,6 +31,12 @@ const FADE = {
  *
  *   result --Show rules-->  overlay: 'rules'  --close-->  result
  *   any stage --☰ header------>  overlay: 'house'  --close-->  result
+ *   any stage --📖 header------>  overlay: 'browse'  --close-->  result
+ *
+ * Inside 'browse', picking a row sets browseTarget (a variation) and
+ * layers RulesSheet on top of the list; that sheet's own close clears
+ * only browseTarget, landing back on the list instead of falling all
+ * the way through to the stage underneath.
  *
  * The winning variation is chosen the moment you tap, before the
  * carousel starts, so it can land on it. All three stages share one
@@ -40,7 +47,8 @@ export default function App() {
   const [stage, setStage] = useState('home')
   const [current, setCurrent] = useState(null)
   const [sideshowBannedThisRound, setSideshowBannedThisRound] = useState(false)
-  const [overlay, setOverlay] = useState(null) // null | 'rules' | 'house'
+  const [overlay, setOverlay] = useState(null) // null | 'rules' | 'house' | 'browse'
+  const [browseTarget, setBrowseTarget] = useState(null)
   const [muted, toggleMuted] = useMuted()
   const enterImmersive = useImmersive()
 
@@ -92,6 +100,7 @@ export default function App() {
           muted={muted}
           onToggleMute={toggleMuted}
           onHouseRules={() => setOverlay('house')}
+          onBrowse={() => setOverlay('browse')}
           dim={stage === 'mixing'}
         />
       )}
@@ -107,7 +116,7 @@ export default function App() {
         <AnimatePresence>
           {stage === 'home' && (
             <motion.div key="home" {...FADE}>
-              <Home onMix={startMix} />
+              <Home onMix={startMix} variationCount={variations.length} />
             </motion.div>
           )}
 
@@ -143,6 +152,17 @@ export default function App() {
         )}
         {overlay === 'house' && (
           <HouseRulesSheet onClose={() => setOverlay(null)} />
+        )}
+        {overlay === 'browse' && (
+          <BrowseSheet
+            variations={variations}
+            browseTarget={browseTarget}
+            onClose={() => setOverlay(null)}
+            onSelect={setBrowseTarget}
+          />
+        )}
+        {browseTarget && (
+          <RulesSheet variation={browseTarget} onClose={() => setBrowseTarget(null)} />
         )}
       </AnimatePresence>
     </div>

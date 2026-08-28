@@ -51,7 +51,10 @@ net, not a substitute for a fast local loop.
 
 - `src/App.jsx` is the whole app's state machine: `stage` (`home` →
   `mixing` → `result`) plus an independent `overlay` (`null` | `rules` |
-  `house`) for the two rule sheets. There's no router - it's all one page.
+  `house` | `browse`) for the three rule sheets. `browse` (BrowseSheet, the
+  searchable "All twists" list) additionally uses its own `browseTarget`
+  state to layer RulesSheet on top when a row is picked, without touching
+  `current` (the mixed winner). There's no router - it's all one page.
 - `src/components/` is one component + one same-named `.css` file per
   piece of UI (`Card.jsx`/`Card.css`, etc.) - no CSS modules, no styled-
   components. Class names follow a light BEM convention:

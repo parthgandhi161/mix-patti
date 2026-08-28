@@ -6,12 +6,12 @@ import './Home.css'
  * tap target, and a thumb-friendly button that does the same thing.
  * Nothing else: no rules, no list.
  */
-export function Home({ onMix }) {
+export function Home({ onMix, variationCount }) {
   return (
     <div className="stage home">
       <header className="home__head">
         <h1 className="home__wordmark">Mix Patti</h1>
-        <p className="home__tagline">27 twists on Teen Patti</p>
+        <p className="home__tagline">{variationCount} twists on Teen Patti</p>
       </header>
 
       <div className="stage__card">
