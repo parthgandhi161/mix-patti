@@ -7,11 +7,13 @@ import { Result } from './components/Result'
 import { RulesSheet } from './components/RulesSheet'
 import { HouseRulesSheet } from './components/HouseRulesSheet'
 import { BrowseSheet } from './components/BrowseSheet'
+import { PlayersSheet } from './components/PlayersSheet'
 import { FloatingSuits } from './components/FloatingSuits'
 import { Header } from './components/Header'
 import { Credit } from './components/Brand'
 import { useMuted } from './lib/useMuted'
 import { useImmersive } from './lib/immersive'
+import { usePlayers } from './lib/usePlayers'
 import { pickNext } from './lib/pick'
 import { primeAudio } from './lib/sound'
 
@@ -32,6 +34,7 @@ const FADE = {
  *   result --Show rules-->  overlay: 'rules'  --close-->  result
  *   any stage --☰ header------>  overlay: 'house'  --close-->  result
  *   any stage --📖 header------>  overlay: 'browse'  --close-->  result
+ *   result --dealer line / + Add players-->  overlay: 'players'  --close-->  result
  *
  * Inside 'browse', picking a row sets browseTarget (a variation) and
  * layers RulesSheet on top of the list; that sheet's own close clears
@@ -47,10 +50,22 @@ export default function App() {
   const [stage, setStage] = useState('home')
   const [current, setCurrent] = useState(null)
   const [sideshowBannedThisRound, setSideshowBannedThisRound] = useState(false)
-  const [overlay, setOverlay] = useState(null) // null | 'rules' | 'house' | 'browse'
+  const [overlay, setOverlay] = useState(null) // null | 'rules' | 'house' | 'browse' | 'players'
   const [browseTarget, setBrowseTarget] = useState(null)
   const [muted, toggleMuted] = useMuted()
   const enterImmersive = useImmersive()
+  const {
+    players,
+    dealerIndex,
+    dealerName,
+    addPlayer,
+    renamePlayer,
+    removePlayer,
+    movePlayer,
+    setDealer,
+    advanceDealer,
+    clearPlayers,
+  } = usePlayers()
 
   // Mirrors .shell--dim/.appHeader--dim one level higher, on <body>
   // itself - see the .is-mixing rule in global.css for why.
@@ -73,6 +88,10 @@ export default function App() {
     enterImmersive()
     primeAudio()
     setOverlay(null)
+    // No-op on an empty roster. Done here, not in an effect, so
+    // StrictMode's dev double-invoke of an effect can't double-advance
+    // it - this click handler only runs once per real tap regardless.
+    advanceDealer()
     // Never the same twist twice in a row.
     const { variation, sideshowBannedThisRound: banned } = pickNext(
       variations,
@@ -138,6 +157,8 @@ export default function App() {
                 sideshowBannedThisRound={sideshowBannedThisRound}
                 onMixAgain={startMix}
                 onShowRules={() => setOverlay('rules')}
+                dealerName={dealerName}
+                onOpenPlayers={() => setOverlay('players')}
               />
             </motion.div>
           )}
@@ -163,6 +184,19 @@ export default function App() {
         )}
         {browseTarget && (
           <RulesSheet variation={browseTarget} onClose={() => setBrowseTarget(null)} />
+        )}
+        {overlay === 'players' && (
+          <PlayersSheet
+            players={players}
+            dealerIndex={dealerIndex}
+            onAdd={addPlayer}
+            onRename={renamePlayer}
+            onRemove={removePlayer}
+            onMove={movePlayer}
+            onSetDealer={setDealer}
+            onClear={clearPlayers}
+            onClose={() => setOverlay(null)}
+          />
         )}
       </AnimatePresence>
     </div>

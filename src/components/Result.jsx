@@ -53,6 +53,8 @@ export function Result({
   sideshowBannedThisRound = false,
   onMixAgain,
   onShowRules,
+  dealerName,
+  onOpenPlayers,
 }) {
   // Read once, so this can't flip mid-reveal - same reasoning as
   // Mixing.jsx's own [reduced] state.
@@ -110,6 +112,14 @@ export function Result({
 
   return (
     <div className="stage result">
+      <button
+        type="button"
+        className={`result__dealer${dealerName ? '' : ' result__dealer--empty'}`}
+        onClick={onOpenPlayers}
+      >
+        {dealerName ? `${dealerName} deals` : '+ Add players'}
+      </button>
+
       <div className="stage__card">
         <div className="result__cardWrap">
           <CardFace variation={variation} className="result__card" />

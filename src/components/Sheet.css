@@ -206,3 +206,168 @@
   text-align: center;
   padding: 24px 0;
 }
+
+/* --- Stage 7 (PlayersSheet) - roster add/rename/reorder/remove -------- */
+
+.playersSheet__add {
+  flex-shrink: 0;
+  display: flex;
+  gap: 10px;
+}
+
+.playersSheet__input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: var(--night-2);
+  border: 1px solid var(--line);
+  color: var(--ivory);
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+
+.playersSheet__input::placeholder {
+  color: var(--lav-dim);
+}
+
+.playersSheet__input:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Overrides buttons.css's .btn--gold { width: 100% } so it sits inline
+   next to the input instead of filling the row - same technique
+   Result.css's .result__rules/.result__mix already use on .btn. */
+.playersSheet__addBtn {
+  width: auto;
+  flex-shrink: 0;
+  padding: 0 20px;
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.playersSheet__empty {
+  color: var(--lav);
+  font-size: 15px;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.playersSheet__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.playersSheet__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 4px;
+  border-radius: 12px;
+  background: var(--night-2);
+  border: 1px solid var(--line);
+}
+
+.playersSheet__nameBtn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  text-align: left;
+  border-radius: 8px;
+}
+
+.playersSheet__nameBtn:hover,
+.playersSheet__nameBtn:focus-visible {
+  background: var(--night-3);
+}
+
+.playersSheet__nameBtn:active {
+  transform: scale(0.98);
+}
+
+.playersSheet__name {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ivory);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playersSheet__nameBtn--dealer .playersSheet__name {
+  color: var(--gold);
+}
+
+.playersSheet__dealerDot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 6px rgba(244, 198, 74, 0.6);
+}
+
+.playersSheet__renameInput {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  margin-left: 4px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--night-3);
+  border: 1px solid var(--gold);
+  color: var(--ivory);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.playersSheet__rowActions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+}
+
+.playersSheet__iconBtn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--night-3);
+  border: 1px solid var(--line);
+  color: var(--lav);
+  font-size: 14px;
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.playersSheet__iconBtn:hover {
+  background: var(--night-1);
+}
+
+.playersSheet__iconBtn:active {
+  transform: scale(0.9);
+}
+
+.playersSheet__iconBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.playersSheet__iconBtn--danger {
+  color: var(--pink);
+}
+
+.playersSheet__clear {
+  flex-shrink: 0;
+  margin-top: 4px;
+}

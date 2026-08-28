@@ -1,7 +1,51 @@
 /* No fade-in of its own: App's AnimatePresence already crossfades the
    stages, and stacking a second opacity animation on top made the
-   arrival read as two separate fades. Layout comes from .stage's three
-   bands in global.css. */
+   arrival read as two separate fades. Layout mostly comes from .stage's
+   bands in global.css - card/caption/controls are bands 2/3/4, and this
+   is the only stage that also claims band 1 (--band-top, 88px), for the
+   optional dealer line below. */
+
+/* Band 1 - only Result uses it, for the optional player-roster dealer
+   line (App.jsx threads dealerName/onOpenPlayers in). Empty roster and an
+   active dealer share this one element (toggled via the --empty
+   modifier) rather than swapping elements, so there's nothing to cause a
+   layout shift between the two states. grid-row: 1 only claims .stage's
+   already-88px --band-top track - the same precedent as Home.css's
+   .home__head - so it never touches --band-top/--chrome/--card-w, which
+   is what keeps .stage__card's box identical whether or not a roster
+   exists. */
+.result__dealer {
+  grid-row: 1;
+  align-self: center;
+  max-width: 100%;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(244, 198, 74, 0.3);
+  background: rgba(244, 198, 74, 0.1);
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--gold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* guards a long player name against visually
+    spilling out of the 88px band - it can't grow the track itself, but
+    unbounded text would still look broken */
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.result__dealer:active {
+  transform: scale(0.96);
+}
+
+/* Quiet, low-contrast "+ Add players" - deliberately not a filled pill,
+   so an empty roster reads as a subtle affordance, not a banner. */
+.result__dealer--empty {
+  color: var(--lav-dim);
+  background: transparent;
+  border-color: transparent;
+  font-weight: 500;
+}
 
 /* Sizing anchor for the sideshow stamp: takes over the width .result__card
    used to set directly, so an absolutely-positioned sibling can be placed

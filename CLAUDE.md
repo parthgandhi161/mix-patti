@@ -51,10 +51,12 @@ net, not a substitute for a fast local loop.
 
 - `src/App.jsx` is the whole app's state machine: `stage` (`home` →
   `mixing` → `result`) plus an independent `overlay` (`null` | `rules` |
-  `house` | `browse`) for the three rule sheets. `browse` (BrowseSheet, the
-  searchable "All twists" list) additionally uses its own `browseTarget`
+  `house` | `browse` | `players`) for the four sheets. `browse` (BrowseSheet,
+  the searchable "All twists" list) additionally uses its own `browseTarget`
   state to layer RulesSheet on top when a row is picked, without touching
-  `current` (the mixed winner). There's no router - it's all one page.
+  `current` (the mixed winner). `players` (PlayersSheet) is the optional
+  player roster + rotating dealer, opened from Result's band-1 dealer line;
+  it has no such nested layering. There's no router - it's all one page.
 - `src/components/` is one component + one same-named `.css` file per
   piece of UI (`Card.jsx`/`Card.css`, etc.) - no CSS modules, no styled-
   components. Class names follow a light BEM convention:
@@ -131,6 +133,13 @@ See the README's "Layout" section for the full file-by-file map.
     produce) on that one line. Widen the pills and they wrap into the
     buttons. To recheck this count after editing `variations.json`:
     `node -e "const d=require('./src/data/variations.json');console.log(d.filter(v=>v.tableCards>0&&v.joker!==null).length)"`.
+  - Band 1 (`--band-top`, 88px) started out Home-only (`.home__head`,
+    the wordmark/tagline). Result now also claims it, for the optional
+    dealer line (`.result__dealer`) - anything placed there has to fit
+    inside the existing 88px, since `--band-top` feeds `--chrome`/
+    `--card-w` directly; don't grow the track itself. Mixing still leaves
+    it empty on purpose (that stage is dimmed/theatrical - a dealer name
+    there would be noise).
 - **No 3D in the mix.** The reveal is `translateX` + `scale` + `opacity`
   only. Mobile WebKit stops honouring `backface-visibility: hidden` once
   the rotating parent's transform is a JS-driven `matrix3d`, which ghosts
