@@ -38,13 +38,34 @@
   transform: scale(0.96);
 }
 
-/* Quiet, low-contrast "+ Add players" - deliberately not a filled pill,
-   so an empty roster reads as a subtle affordance, not a banner. */
+/* Empty roster: a round "+" icon button, matching the header's own icon
+   buttons (.appHeader__icon / .mute / .fullscreenToggle) exactly - same
+   40px circle, night-3 fill, line border, and opacity/scale interaction -
+   rather than the gold "X deals" pill, so it reads as a real, familiar
+   tappable control instead of a quiet text hint that can go unnoticed. */
 .result__dealer--empty {
-  color: var(--lav-dim);
-  background: transparent;
-  border-color: transparent;
-  font-weight: 500;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--night-3);
+  border: 1px solid var(--line);
+  color: var(--ivory);
+  font-size: 20px;
+  font-weight: 400;
+  opacity: 0.75;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.result__dealer--empty:hover,
+.result__dealer--empty:focus-visible {
+  opacity: 1;
+}
+
+.result__dealer--empty:active {
+  transform: scale(0.92);
 }
 
 /* Sizing anchor for the sideshow stamp: takes over the width .result__card

@@ -116,8 +116,9 @@ export function Result({
         type="button"
         className={`result__dealer${dealerName ? '' : ' result__dealer--empty'}`}
         onClick={onOpenPlayers}
+        aria-label={dealerName ? undefined : 'Add players'}
       >
-        {dealerName ? `${dealerName} deals` : '+ Add players'}
+        {dealerName ? `${dealerName} deals` : <span aria-hidden="true">+</span>}
       </button>
 
       <div className="stage__card">
