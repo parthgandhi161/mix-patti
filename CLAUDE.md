@@ -201,6 +201,14 @@ and publishes to `https://parthgandhi161.github.io/mix-patti/` via GitHub
 Actions - there's no separate deploy command to run locally, and no
 staging environment. Pushing to `main`/`master` **is** the deploy.
 
+`index.html`'s `og:url` / `og:image` / `twitter:image` meta tags also
+hardcode this same `https://parthgandhi161.github.io/mix-patti/` origin,
+as an absolute URL (Open Graph requires one, and `%BASE_URL%` - used
+elsewhere in that file for `manifest.json`/`apple-touch-icon.png` - only
+resolves to the relative `/mix-patti/`). That makes `index.html` a second
+place storing this domain, alongside `vite.config.js`'s `base` - if the
+deploy URL ever changes, update both together.
+
 ## Releasing
 
 `npm version patch|minor|major` bumps `package.json`, commits, and tags in
