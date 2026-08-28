@@ -243,7 +243,7 @@ export function Mixing({ variation, variations, onFinish }) {
   // Hold briefly on the landing flourish before handing off to Result.
   useEffect(() => {
     if (!landed) return
-    const t = setTimeout(finish, 420)
+    const t = setTimeout(finish, TIMELINE.hold)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [landed])
@@ -321,7 +321,14 @@ export function Mixing({ variation, variations, onFinish }) {
       </div>
 
       <div className="stage__foot">
-        <p className="mixing__skip">tap to skip</p>
+        {/* Faded out on landing, not just left to the stage crossfade -
+            Result's foot band holds two buttons bottom-anchored in the
+            same box this caption occupies, and both being present at
+            once made "tap to skip" visibly bleed through "Mix again"
+            for the length of the handoff. */}
+        <p className={`mixing__skip${landed ? ' mixing__skip--hidden' : ''}`}>
+          tap to skip
+        </p>
       </div>
     </div>
   )

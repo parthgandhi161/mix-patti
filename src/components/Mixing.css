@@ -45,6 +45,14 @@
   text-transform: uppercase;
   color: var(--lav-dim);
   opacity: 0.7;
+  transition: opacity 150ms ease;
+}
+
+/* Clears well before the stage crossfade starts (landing precedes the
+   handoff by TIMELINE.hold, 360ms) so it never overlaps Result's
+   bottom-anchored buttons in the same .stage__foot box. */
+.mixing__skip--hidden {
+  opacity: 0;
 }
 
 /* --- phase 1: the cascade cut -------------------------------------

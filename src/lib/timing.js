@@ -8,6 +8,7 @@
 export const TIMELINE = {
   shuffle: 1000, // quick riffle shuffle: "mixing"
   reveal: 2900, // face-up card carousel that decelerates and lands: "choosing"
+  hold: 360, // landed-but-static beat before handing off to Result
 }
 
 export const TOTAL_MS = TIMELINE.shuffle + TIMELINE.reveal

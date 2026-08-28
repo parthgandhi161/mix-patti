@@ -146,7 +146,7 @@ button {
   z-index: -1;
   background: var(--mixing-bg);
   opacity: 0;
-  transition: opacity 260ms ease;
+  transition: opacity 220ms ease;
   pointer-events: none;
 }
 

@@ -12,7 +12,7 @@
   background: transparent;
   /* Matches .mixing's own backdrop while mixing, so the header stops
      reading as a separate lighter strip above the dimmed stage. */
-  transition: background 160ms ease;
+  transition: background 220ms ease;
 }
 
 .appHeader--dim {

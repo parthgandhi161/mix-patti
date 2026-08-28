@@ -112,7 +112,7 @@ export function Result({
     <div className="stage result">
       <div className="stage__card">
         <div className="result__cardWrap">
-          <CardFace variation={variation} className="result__card" shimmer />
+          <CardFace variation={variation} className="result__card" />
           {sideshowBannedThisRound &&
             revealStarted &&
             (revealPhase === 'big' ? (
