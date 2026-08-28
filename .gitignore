@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# scripts/shot.mjs scratch output (screenshots, raw measurements) -
+# scripts/baseline.json is the committed reference, this dir is not.
+scripts/output/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

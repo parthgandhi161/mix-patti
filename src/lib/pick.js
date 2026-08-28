@@ -1,3 +1,5 @@
+import { getStorageJSON, setStorageJSON } from './storage'
+
 const STATE_KEY = 'mixpatti.pickState'
 
 // Bag A (priority 1, the classics) is drawn a fifth of the time; bag B
@@ -61,38 +63,31 @@ function sameIdSet(a, b) {
  * pools (writeState) is what makes this comparison possible at all.
  */
 function readState(bagSourceIds) {
-  try {
-    const stored = JSON.parse(localStorage.getItem(STATE_KEY) ?? 'null')
-    if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
-      const bagAFresh = sameIdSet(stored.bagASource, bagSourceIds.bagA)
-      const bagBFresh = sameIdSet(stored.bagBSource, bagSourceIds.bagB)
-      return {
-        bagA: bagAFresh && Array.isArray(stored.bagA) ? stored.bagA : [],
-        bagB: bagBFresh && Array.isArray(stored.bagB) ? stored.bagB : [],
-        lastBanned:
-          typeof stored.lastBanned === 'boolean' ? stored.lastBanned : null,
-      }
+  // `stored` fails this check (falls through to a fresh cycle below) for
+  // anything that isn't a plain object - including `null` (nothing
+  // persisted, or getStorageJSON swallowed a corrupt/unavailable read)
+  // and a bare array (the old mixpatti.unseenIds single-array shape,
+  // which has no .bagA/.bagB).
+  const stored = getStorageJSON(STATE_KEY, null)
+  if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
+    const bagAFresh = sameIdSet(stored.bagASource, bagSourceIds.bagA)
+    const bagBFresh = sameIdSet(stored.bagBSource, bagSourceIds.bagB)
+    return {
+      bagA: bagAFresh && Array.isArray(stored.bagA) ? stored.bagA : [],
+      bagB: bagBFresh && Array.isArray(stored.bagB) ? stored.bagB : [],
+      lastBanned:
+        typeof stored.lastBanned === 'boolean' ? stored.lastBanned : null,
     }
-  } catch {
-    /* corrupt, unavailable, or the old mixpatti.unseenIds single-array
-       shape (a bare array has no .bagA) - fall through to a fresh cycle */
   }
   return { bagA: [], bagB: [], lastBanned: null }
 }
 
 function writeState(state, bagSourceIds) {
-  try {
-    localStorage.setItem(
-      STATE_KEY,
-      JSON.stringify({
-        ...state,
-        bagASource: bagSourceIds.bagA,
-        bagBSource: bagSourceIds.bagB,
-      }),
-    )
-  } catch {
-    /* private browsing, etc. - this cycle just won't persist */
-  }
+  setStorageJSON(STATE_KEY, {
+    ...state,
+    bagASource: bagSourceIds.bagA,
+    bagBSource: bagSourceIds.bagB,
+  })
 }
 
 /**

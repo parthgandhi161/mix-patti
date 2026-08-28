@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { setMuted as applyMute } from './sound'
+import { getStorageItem, setStorageItem } from './storage'
 
 const KEY = 'mixpatti.muted'
 
 /**
  * Mute preference, remembered between sessions.
  *
- * localStorage can throw in private-browsing modes, so every access is
- * wrapped - a failed read just means "not muted".
+ * localStorage access goes through src/lib/storage.js, which swallows
+ * private-browsing/unavailable-storage errors silently - a failed read
+ * just means "not muted" here (getStorageItem returns null, and
+ * `null === '1'` is false).
  *
  * This hook also pushes the value into the audio graph, rather than
  * leaving components to guard their own sound calls. Doing it here means
@@ -15,21 +18,11 @@ const KEY = 'mixpatti.muted'
  * a persisted mute into a context that gets rebuilt after backgrounding.
  */
 export function useMuted() {
-  const [muted, setMuted] = useState(() => {
-    try {
-      return localStorage.getItem(KEY) === '1'
-    } catch {
-      return false
-    }
-  })
+  const [muted, setMuted] = useState(() => getStorageItem(KEY) === '1')
 
   useEffect(() => {
     applyMute(muted)
-    try {
-      localStorage.setItem(KEY, muted ? '1' : '0')
-    } catch {
-      /* preference just won't persist */
-    }
+    setStorageItem(KEY, muted ? '1' : '0')
   }, [muted])
 
   const toggle = useCallback(() => setMuted((m) => !m), [])

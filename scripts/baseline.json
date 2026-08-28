@@ -1,0 +1,16 @@
+{
+  "recordedAt": "2026-08-28",
+  "note": "boundingBox() on .stage__card per stage/device, from `npm run shot`. Re-run npm run shot and update this file by hand when a layout change is intentional - a mismatch afterward is the signal something regressed.",
+  "devices": {
+    "iPhone 13": {
+      "home": { "x": 20, "y": 164, "width": 350, "height": 273.984375 },
+      "mixing": { "x": 20, "y": 164, "width": 350, "height": 273.984375 },
+      "result": { "x": 20, "y": 164, "width": 350, "height": 273.984375 }
+    },
+    "iPhone SE": {
+      "home": { "x": 20, "y": 164, "width": 280, "height": 177.984375 },
+      "mixing": { "x": 20, "y": 164, "width": 280, "height": 177.984375 },
+      "result": { "x": 20, "y": 164, "width": 280, "height": 177.984375 }
+    }
+  }
+}

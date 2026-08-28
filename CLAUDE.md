@@ -14,10 +14,12 @@ client-side static React, deployed as a static site to GitHub Pages.
 - React 19 + Vite 8, plain CSS (no Tailwind/CSS-in-JS/component library).
 - Framer Motion for the few animated transitions (stage crossfade, the
   mixing carousel, sheet slide-up).
-- `oxlint` for linting (`npm run lint`). No automated test suite or CI
-  gate exists yet - Playwright is a `devDependency`, but only for one-off
-  visual verification during development (see README's "Visual checks
-  with Playwright"), nothing runs it automatically.
+- `oxlint` for linting (`npm run lint`) and `vitest` for unit tests
+  (`npm test`) - both run in CI (`.github/workflows/deploy.yml`) before
+  every deploy build. Playwright is a `devDependency` too, but purely for
+  the committed manual visual-verification harness in `scripts/` (see
+  README's "Visual checks with Playwright") - it isn't wired into CI,
+  only `oxlint`/`vitest` are.
 - Fonts (Baloo Bhaijaan 2, Baloo 2) are self-hosted as woff2 in
   `public/fonts/`, declared via `@font-face` in `src/styles/global.css` -
   not loaded from Google Fonts at runtime.
@@ -34,12 +36,16 @@ npm install
 npm run dev      # http://localhost:5173/mix-patti/
 npm run build    # production build into dist/
 npm run lint      # oxlint
+npm test         # vitest (src/lib unit tests)
 npm run preview  # serve the production build locally
 ```
 
-Run `npm run build` (and `npm run lint`) after any non-trivial change -
-there's no CI step that runs before the GitHub Pages deploy, so a broken
-build only surfaces once it's already live.
+`npm run lint`, `npm test`, and `npm run build` all run in CI
+(`.github/workflows/deploy.yml`) before every GitHub Pages deploy - a
+broken lint/test/build fails the `build` job and blocks `deploy` (which
+`needs: build`), so nothing broken reaches production. Still run all
+three locally after any non-trivial change - CI catching it is a safety
+net, not a substitute for a fast local loop.
 
 ## Architecture
 

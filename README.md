@@ -42,11 +42,13 @@ hand.
 
 ## Visual checks with Playwright
 
-Playwright is a `devDependency`, kept around for one-off visual
-verification during development - screenshotting the mix animation
-(shuffle → carousel → land), mobile layout, etc. in headless Chromium instead
-of eyeballing `npm run dev` by hand. It's not a test suite (see "Not built
-yet" below) and nothing here runs in CI.
+Playwright is a `devDependency`. `scripts/shot.mjs` (plus
+`scripts/offline-check.mjs` for the offline case) is a small committed
+harness around it - not a test suite, and not wired into CI (only
+`npm run lint` and `npm test` gate the deploy, see CLAUDE.md) - for
+screenshotting the mix animation (shuffle → carousel → land), mobile
+layout, etc. in headless Chromium instead of eyeballing `npm run dev` by
+hand.
 
 One-time per machine, the browser binary itself isn't part of the repo:
 
@@ -54,23 +56,22 @@ One-time per machine, the browser binary itself isn't part of the repo:
 npx playwright install chromium
 ```
 
-Then, with `npm run dev` running, drive it from a throwaway script:
+Then, with `npm run dev` running in another terminal:
 
-```js
-import { chromium, devices } from 'playwright'
-
-const browser = await chromium.launch()
-const page = await (await browser.newContext({ ...devices['iPhone 13'] })).newPage()
-await page.goto('http://localhost:5173/mix-patti/')
-await page.click('text=Mix a twist')
-await page.waitForTimeout(1500)
-await page.screenshot({ path: 'out.png' })
-await browser.close()
+```bash
+npm run shot            # screenshots + boundingBox() measurements at
+                         # iPhone 13 and iPhone SE -> scripts/output/
+                         # (gitignored); compare against scripts/baseline.json
+npm run shot:offline    # builds + serves the production build, then
+                         # checks the full mix flow still works with the
+                         # network off (real service worker + Cache
+                         # Storage - see scripts/offline-check.mjs)
 ```
 
-`devices['iPhone 13']` matters more than it looks: it gives the touch /
-`pointer: coarse` emulation this app's mobile-only features key off (see
-`isTouchPrimary()` in `src/lib/immersive.js`), not just the viewport size.
+`devices['iPhone 13']` (and `devices['iPhone SE']`) matter more than they
+look: they give the touch / `pointer: coarse` emulation this app's
+mobile-only features key off (see `isTouchPrimary()` in
+`src/lib/immersive.js`), not just the viewport size.
 
 ## Layout
 
@@ -79,6 +80,7 @@ public/
   fonts/                       self-hosted Baloo Bhaijaan 2 / Baloo 2
                                 woff2s, latin + latin-ext subsets only
 src/
+  main.jsx                    React entry point, mounts <App /> into #root
   App.jsx                     state machine: home → mixing → result, plus
                               the rules / house-rules overlays and the
                               header
@@ -86,32 +88,39 @@ src/
   lib/
     pick.js                   random pick, never the same twist twice in a
                               row
+    storage.js                shared localStorage get/set (raw string +
+                              JSON), used by pick.js and useMuted.js
     summary.js                builds the Deal / Win / Twist result badges
     timing.js                 the mix timeline (single source of truth)
     sound.js                  desi percussion, synthesised with Web Audio;
                               owns the AudioContext lifecycle
-    useMuted.js               mute preference, remembered in localStorage
-    immersive.js              fullscreen + wake lock on mobile, entered on
+    useMuted.js                mute preference, remembered in localStorage
+    immersive.js               fullscreen + wake lock on mobile, entered on
                               tap
-  components/
-    Home.jsx                  Stage 1 - idle, big hero wordmark + tap-to-mix
+  components/                 one component + one same-named .css file per
+                              piece of UI, except RulesSheet.jsx and
+                              HouseRulesSheet.jsx, which share Sheet.css
+    Home.jsx / Home.css       Stage 1 - idle, big hero wordmark + tap-to-mix
                               card
-    Mixing.jsx                Stage 2 - shuffle → carousel → land
-    Result.jsx                Stage 3 - name + up to 3 summary badges
+    Mixing.jsx / Mixing.css   Stage 2 - shuffle → carousel → land
+    Result.jsx / Result.css   Stage 3 - name + up to 3 summary badges
     RulesSheet.jsx            Stage 4 - per-variation rules, "Show rules"
     HouseRulesSheet.jsx       Stage 5 - the four house rules, ☰ button
-    Card.jsx                  shared card back / card face
-    Header.jsx                centred small wordmark + mute toggle, shown on
+    Sheet.css                 shared sheet chrome for stages 4 and 5
+    Card.jsx / Card.css       shared card back / card face
+    Header.jsx / Header.css   centred small wordmark + mute toggle, shown on
                               every stage except the sheets
-    Brand.jsx                 the "made with ♥" footer credit
-    FloatingSuits.jsx         drifting background suit glyphs
-    MuteToggle.jsx            the mute button, laid out inside Header
+    MuteToggle.jsx / MuteToggle.css  the mute button, laid out inside Header
+    FullscreenToggle.jsx / FullscreenToggle.css  requests fullscreen +
+                              wake lock on the first tap, mobile only
+    Brand.jsx / Brand.css     the "made with ♥" footer credit
+    FloatingSuits.jsx / FloatingSuits.css  drifting background suit glyphs
   styles/
     global.css                colour + type tokens (Baloo Bhaijaan 2
                               wordmark, Baloo 2 everywhere else), reset, app
                               shell, and the shared three-band stage layout
                               that keeps the card in one place
-    buttons.css               shared button shapes
+    buttons.css                shared button shapes
 ```
 
 ## Not built yet

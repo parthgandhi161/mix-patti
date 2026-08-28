@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
+    "test": "vitest run",
+    "shot": "node scripts/shot.mjs",
+    "shot:offline": "node scripts/offline-check.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -21,6 +24,7 @@
     "oxlint": "^1.75.0",
     "playwright": "^1.62.1",
     "vite": "^8.2.0",
-    "vite-plugin-pwa": "^1.3.0"
+    "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^4.1.11"
   }
 }
