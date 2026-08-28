@@ -39,6 +39,33 @@ const STARRED_SHARE = 0.3
 // ever needs to fire.
 export const MIN_UNMUTED = 2
 
+// Target size, before scaling down for small bags, of the "keep these out
+// of the front of the next cycle" window - see historyWindowSize().
+const HISTORY_WINDOW_TARGET = 5
+
+/**
+ * How many of a bag's own most recent draws the next reshuffle should try
+ * to keep out of the FRONT of the new cycle - which, per drawFrom()'s own
+ * comment, is actually the END of the freshly shuffled array, since draws
+ * pop from list[top] downward.
+ *
+ * A flat HISTORY_WINDOW_TARGET can't apply to every bag: bagA (the
+ * classics) has only 6 entries live today, and reserving 5 of them as
+ * "can't come up yet" would leave a single id to fill 5 draw slots -
+ * infeasible. Scaling with sourceIds.length instead - floor(N / 3) capped
+ * at the target - guarantees N - 2*windowSize >= windowSize, i.e. at least
+ * as many non-avoided ids remain as the window itself needs to fill with
+ * swap candidates (see avoidRecentInFront()). Same floor-not-gate idea as
+ * MIN_UNMUTED/starEligible - just a continuously scaled size instead of a
+ * yes/no cutoff, which is also why bagStar needs no special case: at its
+ * starEligible floor of 2 members this already evaluates to 0 (no
+ * avoidance at all), which is correct - a 2-member bag has no room to
+ * spare for one.
+ */
+export function historyWindowSize(sourceIds) {
+  return Math.min(HISTORY_WINDOW_TARGET, Math.floor(sourceIds.length / 3))
+}
+
 /**
  * Non-strict rate needed on the remaining entries so the strict-banned
  * share plus this extra roll converge on TARGET_BANNED_SHARE, derived from
@@ -93,7 +120,10 @@ function effectiveMutedSet(variations, mutedIds) {
  * picks), treat any source-set mismatch as a reason to drop that bag and
  * reshuffle fresh from the current data on the very next draw - see
  * drawFrom()'s empty-pool path. Persisting the source sets alongside the
- * pools (writeState) is what makes this comparison possible at all.
+ * pools (writeState) is what makes this comparison possible at all. Each
+ * bag's recent-draw history (bag<Key>History, see historyWindowSize()) is
+ * dropped on the exact same mismatch - a history of draws from a bag whose
+ * membership just changed is stale in the same way `remaining` is.
  */
 function readState(bagSourceIds) {
   // `stored` fails this check (falls through to a fresh cycle below) for
@@ -108,13 +138,27 @@ function readState(bagSourceIds) {
     const bagStarFresh = sameIdSet(stored.bagStarSource, bagSourceIds.bagStar)
     return {
       bagA: bagAFresh && Array.isArray(stored.bagA) ? stored.bagA : [],
+      bagAHistory:
+        bagAFresh && Array.isArray(stored.bagAHistory) ? stored.bagAHistory : [],
       bagB: bagBFresh && Array.isArray(stored.bagB) ? stored.bagB : [],
+      bagBHistory:
+        bagBFresh && Array.isArray(stored.bagBHistory) ? stored.bagBHistory : [],
       bagStar: bagStarFresh && Array.isArray(stored.bagStar) ? stored.bagStar : [],
+      bagStarHistory:
+        bagStarFresh && Array.isArray(stored.bagStarHistory) ? stored.bagStarHistory : [],
       lastBanned:
         typeof stored.lastBanned === 'boolean' ? stored.lastBanned : null,
     }
   }
-  return { bagA: [], bagB: [], bagStar: [], lastBanned: null }
+  return {
+    bagA: [],
+    bagAHistory: [],
+    bagB: [],
+    bagBHistory: [],
+    bagStar: [],
+    bagStarHistory: [],
+    lastBanned: null,
+  }
 }
 
 function writeState(state, bagSourceIds) {
@@ -127,9 +171,52 @@ function writeState(state, bagSourceIds) {
 }
 
 /**
+ * Swaps any id in `avoidIds` out of the LAST `windowSize` positions of
+ * `list` for a non-avoided id from earlier in the array. Mutates `list` in
+ * place. Those last positions are the FRONT-drawn end of a fresh cycle -
+ * see drawFrom()'s comment: draws pop from the array's end backward, so
+ * the tail is what gets dealt first.
+ *
+ * Swaps rather than sorting/filtering avoidIds toward the back on purpose:
+ * a sort would make the window's contents deterministic (whichever ids
+ * simply weren't avoided, in whatever order shuffled() happened to leave
+ * them), where a swap keeps it a fair permutation of exactly the ids that
+ * end up there.
+ *
+ * historyWindowSize()'s N >= 3*windowSize margin is what guarantees this
+ * never runs out of candidates under normal operation: avoidIds.size <=
+ * windowSize by construction (drawFrom() clamps it before calling this),
+ * so even in the worst case - every avoided id landing inside the window -
+ * there are still N - 2*windowSize >= windowSize untouched ids outside it
+ * to swap in. The `candidatePool.length === 0` bail-out below is defense-
+ * in-depth for when that margin doesn't hold (e.g. a hand-edited
+ * localStorage value with an oversized history) - same best-effort-not-a-
+ * guarantee precedent as MAX_REROLL_ATTEMPTS elsewhere in this file: leave
+ * that one slot as the shuffle already had it rather than throw or loop.
+ */
+function avoidRecentInFront(list, avoidIds, windowSize) {
+  const n = list.length
+  const windowStart = n - windowSize
+  const candidatePool = []
+  for (let i = 0; i < windowStart; i++) {
+    if (!avoidIds.has(list[i])) candidatePool.push(i)
+  }
+  for (let pos = n - 1; pos >= windowStart; pos--) {
+    if (!avoidIds.has(list[pos])) continue
+    if (candidatePool.length === 0) break
+    const pick = Math.floor(Math.random() * candidatePool.length)
+    const from = candidatePool[pick]
+    ;[list[pos], list[from]] = [list[from], list[pos]]
+    candidatePool.splice(pick, 1) // now sitting in the window - can't reuse it
+  }
+}
+
+/**
  * Pop one id off a shuffle-bag, refilling+reshuffling from `sourceIds` when
  * it runs dry OR when the only id left would just hand `previousId` right
- * back (see below).
+ * back (see below). Also updates and returns this bag's own recent-draw
+ * history ring buffer (see historyWindowSize()) - callers thread the
+ * returned value back in on the next call for the same bag.
  *
  * A fresh shuffle can coincidentally deal the same id that just finished the
  * previous cycle right back out on top - and since a bag only ever loses the
@@ -155,17 +242,38 @@ function writeState(state, bagSourceIds) {
  * detected refill boundary: it's cheap, and it also covers a hand-edited or
  * corrupt localStorage value that puts previousId on top of an otherwise
  * mid-cycle bag.
+ *
+ * On a genuine reshuffle (the `exhausted` branch), `history` - this SAME
+ * bag's own most recently drawn ids, oldest first - gets a chance to steer
+ * the fresh shuffle away from repeating them up front, via
+ * avoidRecentInFront(), before the previousId swap above ever runs. Only
+ * `history.slice(-windowSize)` is trusted as the avoid-set even though
+ * callers already cap it there (see pickNext()) - a hand-edited
+ * localStorage value could hand back something longer, and
+ * avoidRecentInFront()'s feasibility proof depends on the avoid-set never
+ * exceeding windowSize.
  */
-function drawFrom(remaining, sourceIds, previousId) {
+function drawFrom(remaining, sourceIds, previousId, history = []) {
+  const windowSize = historyWindowSize(sourceIds)
   const exhausted =
     remaining.length === 0 || (remaining.length === 1 && remaining[0] === previousId)
   const list = exhausted ? shuffled(sourceIds) : remaining.slice()
+
+  if (exhausted && windowSize > 0 && history.length > 0) {
+    avoidRecentInFront(list, new Set(history.slice(-windowSize)), windowSize)
+  }
+
   const top = list.length - 1
   if (top > 0 && list[top] === previousId) {
     const j = Math.floor(Math.random() * top) // 0..top-1
     ;[list[top], list[j]] = [list[j], list[top]]
   }
-  return { id: list[top], rest: list.slice(0, top) }
+
+  const id = list[top]
+  // slice(-0) returns the WHOLE array, not an empty one - windowSize === 0
+  // needs its own branch rather than leaning on slice's negative-index math.
+  const nextHistory = windowSize > 0 ? [...history, id].slice(-windowSize) : []
+  return { id, rest: list.slice(0, top), history: nextHistory }
 }
 
 /**
@@ -214,6 +322,17 @@ function drawFrom(remaining, sourceIds, previousId) {
  * where every attempt keeps re-drawing a banned entry. With only ~2 strict
  * entries in 25 and a ~20% overall banned rate, that chain is vanishingly
  * rare in practice.
+ *
+ * Each bag also carries its own bag<Key>History (see historyWindowSize())
+ * so that when IT reshuffles, the new cycle's first few draws avoid the
+ * outgoing cycle's last few - a bag cycling through all its own members
+ * before repeating any (see drawFrom()) already stops the same twist from
+ * clustering near itself in absolute terms, but says nothing about *where
+ * in the next cycle* it can land, and a coincidental reshuffle can deal it
+ * right back out near the front. That's a per-bag, structural (not
+ * best-effort) guarantee - separate from the sideshow-ban reroll above,
+ * which stays probabilistic because rerolling a ban is a completely
+ * different kind of unlucky.
  */
 export function pickNext(variations, previousId, { mutedIds = [], starredIds = [] } = {}) {
   const byId = new Map(variations.map((v) => [v.id, v]))
@@ -241,9 +360,18 @@ export function pickNext(variations, previousId, { mutedIds = [], starredIds = [
           // (or, previously, only a future data edit) emptying a priority
           // group falls back to the full unmuted list rather than drawing
           // `undefined`. Never reached for bagStar - it's only ever chosen
-          // when starEligible, which guarantees it's non-empty.
-    const { id, rest } = drawFrom(state[bagKey], sourceIds, previousId)
+          // when starEligible, which guarantees it's non-empty. Side
+          // effect: historyWindowSize() sees this union's (larger) size
+          // rather than the bag's true membership in this rare path -
+          // harmless, still capped safely, just not "normal".
+    const { id, rest, history } = drawFrom(
+      state[bagKey],
+      sourceIds,
+      previousId,
+      state[`${bagKey}History`],
+    )
     state[bagKey] = rest
+    state[`${bagKey}History`] = history
 
     variation = byId.get(id) ?? variations[0]
     banned = variation.sideshowBanned === true || Math.random() < rollRate

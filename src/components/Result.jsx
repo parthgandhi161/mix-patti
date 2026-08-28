@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { CardFace } from './Card'
 import { MIN_UNMUTED } from '../lib/pick'
 import { summarise, summariseBadges } from '../lib/summary'
-import { playBanRiser, playBanSting, stopAll } from '../lib/sound'
+import { playBanRiser, playBanStamp, stopAll } from '../lib/sound'
 import { prefersReducedMotion } from '../lib/timing'
 import './Result.css'
 
@@ -79,8 +79,8 @@ export function Result({
     if (reduced) {
       // Keep the reveal, drop the theatre: skip straight to the small
       // pill (already this component's initial state under reduced
-      // motion) and just land the sting once.
-      playBanSting()
+      // motion) and just land the stamp once.
+      playBanStamp()
       resolved.current = true
       return
     }
@@ -109,7 +109,7 @@ export function Result({
     resolved.current = true
     clearTimeout(holdTimer.current)
     stopAll()
-    playBanSting()
+    playBanStamp()
     setRevealPhase('settled')
   }
 

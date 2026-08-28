@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import variations from '../data/variations.json'
-import { MIN_UNMUTED, bannedRollRate, pickNext, shuffled } from './pick.js'
+import { MIN_UNMUTED, bannedRollRate, historyWindowSize, pickNext, shuffled } from './pick.js'
 
 const STATE_KEY = 'mixpatti.pickState'
 
@@ -81,6 +81,111 @@ describe('pickNext - each shuffle-bag cycles through all its own members before 
   })
 })
 
+describe("pickNext - a bag's recent-history window avoids repeating the outgoing cycle's tail at the front of the next cycle", () => {
+  function idsOfLength(prefix, n) {
+    return Array.from({ length: n }, (_, i) => `${prefix}${i}`)
+  }
+
+  // Collects the ordered sequence of ids drawn for the bag under test, then
+  // chunks it into consecutive complete cycles - bannedRollRate is driven
+  // to 0 for these fixtures (as in the "cycles fully" tests above), so
+  // every draw from the bag under test is real, and a repeat marks a
+  // genuine cycle boundary. Asserts the outgoing cycle's last `windowSize`
+  // ids and the next cycle's first `windowSize` ids never overlap.
+  function assertNoTailHeadOverlap(synthetic, isUnderTest, bagSize, windowSize, iterations) {
+    const cycles = []
+    let current = []
+    const seen = new Set()
+    let previousId
+    for (let i = 0; i < iterations; i++) {
+      const { variation } = pickNext(synthetic, previousId)
+      previousId = variation.id
+      if (!isUnderTest(variation)) continue
+      if (seen.has(variation.id)) {
+        expect(current).toHaveLength(bagSize) // repeat is only legal once full
+        cycles.push(current)
+        current = []
+        seen.clear()
+      }
+      current.push(variation.id)
+      seen.add(variation.id)
+    }
+    // The final `current` is a still-in-progress cycle at the end of the
+    // loop - deliberately not pushed, so every chunk in `cycles` is complete.
+
+    expect(cycles.length).toBeGreaterThan(20) // sanity: plenty of real boundaries
+
+    for (let i = 0; i < cycles.length - 1; i++) {
+      const outgoingTail = new Set(cycles[i].slice(-windowSize))
+      const incomingHead = cycles[i + 1].slice(0, windowSize)
+      for (const id of incomingHead) {
+        expect(outgoingTail.has(id)).toBe(false)
+      }
+    }
+  }
+
+  it('N=6, K=2 (mirrors the live "classics" bag)', () => {
+    const bagIds = idsOfLength('a', 6)
+    const filler = idsOfLength('f', 9)
+    const strictFiller = new Set(filler.slice(0, 3)) // 3 of 15 total -> rate 0
+    const synthetic = [
+      ...bagIds.map((id) => ({ id, priority: 1, sideshowBanned: false })),
+      ...filler.map((id) => ({ id, priority: 2, sideshowBanned: strictFiller.has(id) })),
+    ]
+    expect(bannedRollRate(synthetic)).toBe(0)
+    expect(historyWindowSize(bagIds)).toBe(2)
+    assertNoTailHeadOverlap(synthetic, (v) => v.priority === 1, 6, 2, 6000)
+  })
+
+  it('N=18, K=5 (mirrors the live "fun twists" bag - exercises the HISTORY_WINDOW_TARGET cap)', () => {
+    const bagIds = idsOfLength('b', 18)
+    const filler = idsOfLength('g', 7)
+    const strictFiller = new Set(filler.slice(0, 5)) // 5 of 25 total -> rate 0
+    const synthetic = [
+      ...bagIds.map((id) => ({ id, priority: 2, sideshowBanned: false })),
+      ...filler.map((id) => ({ id, priority: 1, sideshowBanned: strictFiller.has(id) })),
+    ]
+    expect(bannedRollRate(synthetic)).toBe(0)
+    expect(historyWindowSize(bagIds)).toBe(5)
+    assertNoTailHeadOverlap(synthetic, (v) => v.priority !== 1, 18, 5, 6000)
+  })
+
+  it('N=4, K=1 (a small bag still gets a minimal window)', () => {
+    const bagIds = idsOfLength('c', 4)
+    const filler = idsOfLength('h', 1)
+    const synthetic = [
+      ...bagIds.map((id) => ({ id, priority: 2, sideshowBanned: false })),
+      ...filler.map((id) => ({ id, priority: 1, sideshowBanned: true })), // 1 of 5 total -> rate 0
+    ]
+    expect(bannedRollRate(synthetic)).toBe(0)
+    expect(historyWindowSize(bagIds)).toBe(1)
+    assertNoTailHeadOverlap(synthetic, (v) => v.priority !== 1, 4, 1, 3000)
+  })
+
+  it('does not throw when a persisted history is longer than the window and gets clamped', () => {
+    const bagAIds = variations.filter((v) => v.priority === 1).map((v) => v.id)
+    const bagBIds = variations.filter((v) => v.priority !== 1).map((v) => v.id)
+    localStorage.setItem(
+      STATE_KEY,
+      JSON.stringify({
+        bagA: [], // empty -> forces a reshuffle, the only branch that reads history
+        bagAHistory: bagAIds, // pathologically long: the bag's ENTIRE own membership
+        bagB: bagBIds,
+        bagBHistory: [],
+        bagStar: [],
+        bagStarHistory: [],
+        lastBanned: null,
+        bagASource: bagAIds,
+        bagBSource: bagBIds,
+        bagStarSource: [],
+      }),
+    )
+    vi.spyOn(Math, 'random').mockReturnValue(0.01) // force bagKey === 'bagA'
+    const { variation } = pickNext(variations, undefined)
+    expect(bagAIds).toContain(variation.id)
+  })
+})
+
 describe('pickNext - a stale persisted bag source is dropped and reshuffled (sameIdSet)', () => {
   // writeState() unconditionally recomputes bagASource/bagBSource fresh
   // on EVERY call, regardless of what readState() did - so asserting on
@@ -115,6 +220,27 @@ describe('pickNext - a stale persisted bag source is dropped and reshuffled (sam
     // leaving bagAIds.length - 1. A wrongly-reused stale pool (length 1)
     // would leave 0.
     expect(written.bagA).toHaveLength(bagAIds.length - 1)
+  })
+
+  it('also drops a persisted bagAHistory whose bagASource no longer matches live data', () => {
+    localStorage.setItem(STATE_KEY, JSON.stringify({
+      bagA: [sampleBagAId],
+      bagAHistory: ['not-even-a-real-bagA-id'], // proves it's dropped, not coincidentally unused
+      bagB: [],
+      lastBanned: null,
+      bagASource: ['some-completely-different-stale-id'], // mismatched -> drop
+      bagBSource: bagBIds,
+    }))
+
+    vi.spyOn(Math, 'random').mockReturnValue(0.01) // force bagKey === 'bagA'
+
+    const { variation } = pickNext(variations, undefined)
+
+    const written = JSON.parse(localStorage.getItem(STATE_KEY))
+    // A correctly-dropped history starts this round's ring buffer fresh -
+    // just this draw. A wrongly-carried-over stale array would still hold
+    // 'not-even-a-real-bagA-id'.
+    expect(written.bagAHistory).toEqual([variation.id])
   })
 
   it('drops a persisted bagB whose bagBSource no longer matches live data', () => {
@@ -158,6 +284,24 @@ describe('pickNext - legacy shape and corrupt storage fall back to a fresh cycle
     })
     expect(() => pickNext(variations, undefined)).not.toThrow()
   })
+
+  it('falls back cleanly for a current-shape blob missing the newer bag*History fields', () => {
+    localStorage.setItem(
+      STATE_KEY,
+      JSON.stringify({
+        bagA: [],
+        bagB: [],
+        bagStar: [],
+        lastBanned: null,
+        bagASource: variations.filter((v) => v.priority === 1).map((v) => v.id),
+        bagBSource: variations.filter((v) => v.priority !== 1).map((v) => v.id),
+        bagStarSource: [],
+        // no bagAHistory/bagBHistory/bagStarHistory - this is what
+        // mixpatti.pickState looked like before the anti-clustering window.
+      }),
+    )
+    expect(() => pickNext(variations, undefined)).not.toThrow()
+  })
 })
 
 describe('bannedRollRate', () => {
@@ -192,6 +336,37 @@ describe('bannedRollRate', () => {
     // wide enough not to flake, tight enough to catch a real regression.
     expect(share).toBeGreaterThan(0.15)
     expect(share).toBeLessThan(0.25)
+  })
+})
+
+describe('historyWindowSize', () => {
+  function idsOfLength(n) {
+    return Array.from({ length: n }, (_, i) => `id${i}`)
+  }
+
+  it('scales as floor(N/3) below the HISTORY_WINDOW_TARGET cap', () => {
+    expect(historyWindowSize(idsOfLength(6))).toBe(2)
+    expect(historyWindowSize(idsOfLength(9))).toBe(3)
+    expect(historyWindowSize(idsOfLength(12))).toBe(4)
+  })
+
+  it('caps at 5 (HISTORY_WINDOW_TARGET) once floor(N/3) would exceed it', () => {
+    expect(historyWindowSize(idsOfLength(18))).toBe(5)
+    expect(historyWindowSize(idsOfLength(21))).toBe(5)
+    expect(historyWindowSize(idsOfLength(100))).toBe(5)
+  })
+
+  it('returns 0 below N=3 - no room to spare for an avoidance window', () => {
+    expect(historyWindowSize([])).toBe(0)
+    expect(historyWindowSize(idsOfLength(1))).toBe(0)
+    expect(historyWindowSize(idsOfLength(2))).toBe(0)
+  })
+
+  it('matches the live dataset: bagA -> 2, bagB -> 5', () => {
+    const bagAIds = variations.filter((v) => v.priority === 1).map((v) => v.id)
+    const bagBIds = variations.filter((v) => v.priority !== 1).map((v) => v.id)
+    expect(historyWindowSize(bagAIds)).toBe(2)
+    expect(historyWindowSize(bagBIds)).toBe(5)
   })
 })
 
