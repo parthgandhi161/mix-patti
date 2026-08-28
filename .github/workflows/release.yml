@@ -12,6 +12,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # `gh release create --generate-notes` builds its "What's Changed"
+      # list from merged PRs - this repo pushes straight to `main`/
+      # `master` with no PR history, so that flag alone always produced
+      # an empty release (just the "Full Changelog" compare link, no
+      # actual notes). Build the notes from commit subjects between the
+      # previous and current tag instead.
       - env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" --generate-notes
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          PREV_TAG=$(git tag --sort=-v:refname --merged HEAD | grep -Fxv "$TAG" | head -n1 || true)
+          RANGE="HEAD"
+          [ -n "$PREV_TAG" ] && RANGE="$PREV_TAG..HEAD"
+
+          # Drop the version-bump commit itself so the body is the actual
+          # changelog, not a tautological "- 1.9.1" line. npm version's
+          # default commit message is the bare version number, but a few
+          # older tags in this repo were bumped with a "v"-prefixed
+          # message instead, so filter both forms.
+          NOTES=$(git log "$RANGE" --pretty=format:'- %s' | grep -Fxv -e "- $VERSION" -e "- $TAG" || true)
+          [ -z "$NOTES" ] && NOTES="No notable changes."
+
+          gh release create "$TAG" --title "$TAG" --notes "$NOTES"
