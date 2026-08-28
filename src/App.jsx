@@ -52,6 +52,11 @@ export default function App() {
   const [stage, setStage] = useState('home')
   const [current, setCurrent] = useState(null)
   const [sideshowBannedThisRound, setSideshowBannedThisRound] = useState(false)
+  // Whether Result's own sideshow-ban reveal wants the header/footer
+  // dimmed right now - reported up via Result's onRevealDimChange, so
+  // it can share the same dim mechanism as stage === 'mixing' below
+  // instead of Result inventing a second one.
+  const [resultRevealDim, setResultRevealDim] = useState(false)
   const [overlay, setOverlay] = useState(null) // null | 'rules' | 'house' | 'browse' | 'players'
   const [browseTarget, setBrowseTarget] = useState(null)
   const [muted, toggleMuted] = useMuted()
@@ -78,12 +83,17 @@ export default function App() {
     canToggleMute,
   } = useVariationPrefs(variations)
 
+  // Single source of truth for every chrome-dim site below - shared by
+  // both the Mixing stage and Result's sideshow-ban reveal, so they
+  // stay one mechanism instead of drifting into two.
+  const dimChrome = stage === 'mixing' || resultRevealDim
+
   // Mirrors .shell--dim/.appHeader--dim one level higher, on <body>
-  // itself - see the .is-mixing rule in global.css for why.
+  // itself - see the .is-dim rule in global.css for why.
   useEffect(() => {
-    document.body.classList.toggle('is-mixing', stage === 'mixing')
-    return () => document.body.classList.remove('is-mixing')
-  }, [stage])
+    document.body.classList.toggle('is-dim', dimChrome)
+    return () => document.body.classList.remove('is-dim')
+  }, [dimChrome])
 
   // Tells pwaUpdate.js when it's safe to silently reload for a pending
   // app update - only the idle Home stage with no sheet open, so a
@@ -127,7 +137,7 @@ export default function App() {
   }
 
   return (
-    <div className={`shell${stage === 'mixing' ? ' shell--dim' : ''}`}>
+    <div className={`shell${dimChrome ? ' shell--dim' : ''}`}>
       {/* Fades with the stage instead of vanishing on the same frame the
           dim lands - an abrupt unmount reads as a flicker. */}
       <AnimatePresence>
@@ -146,7 +156,7 @@ export default function App() {
           onBrowse={() => setOverlay('browse')}
           hasPlayers={players.length > 0}
           onOpenPlayers={() => setOverlay('players')}
-          dim={stage === 'mixing'}
+          dim={dimChrome}
         />
       )}
 
@@ -190,6 +200,7 @@ export default function App() {
                 onToggleStar={() => toggleStarred(current.id)}
                 onToggleMute={() => toggleVariationMuted(current.id)}
                 canMuteThis={canToggleMute(current.id)}
+                onRevealDimChange={setResultRevealDim}
               />
             </motion.div>
           )}

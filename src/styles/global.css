@@ -314,8 +314,10 @@ button {
    the real visual viewport while the browser's toolbar shows/hides
    (often right as .shell--dim kicks in, since the same tap can trigger
    fullscreen/wake-lock). If that gap ever exposes whatever's behind
-   .shell, it should be this dim tone, not body's default gradient. */
-body.is-mixing {
+   .shell, it should be this dim tone, not body's default gradient.
+   Named generically (not .is-mixing) because App.jsx now toggles it for
+   two reasons - the Mixing stage and Result's sideshow-ban reveal. */
+body.is-dim {
   background-color: var(--mixing-bg);
 }
 

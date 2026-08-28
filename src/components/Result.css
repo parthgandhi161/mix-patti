@@ -231,15 +231,18 @@
 }
 
 /* Dims and blocks the rest of the Result screen while the big phase
-   plays - scoped to this stage only, not App.jsx's body-level
-   .shell--dim (that's keyed to stage === 'mixing' and also dims the
-   header/suits outside the shell, a bigger hammer than a same-screen
-   flourish needs - the header stays live/tappable during this reveal,
-   an accepted trade-off). Fills .stage (the nearest positioned
-   ancestor), so it covers the card, badge row and buttons without
-   reaching the header above it. Doubles as the tap-to-skip target; the
-   buttons underneath also get `disabled` in Result.jsx so Tab+Enter
-   can't reach past it either. */
+   plays - scoped to this stage only. Fills .stage (the nearest
+   positioned ancestor), so it covers the card, badge row and buttons;
+   it doubles as the tap-to-skip target, and the buttons underneath also
+   get `disabled` in Result.jsx so Tab+Enter can't reach past it either.
+   The header and footer sit outside .stage, so this overlay alone can't
+   reach them - they instead pick up the same --mixing-bg tone via
+   App.jsx's shell--dim/appHeader--dim, reported up from Result.jsx's
+   bigRevealActive through onRevealDimChange (the same mechanism
+   App.jsx already uses for stage === 'mixing'), so all three read as
+   one darkened surface instead of the header/footer staying lit while
+   just the stage dims underneath them. The header stays live/tappable
+   throughout, same as it already is during the Mixing dim. */
 .result__revealOverlay {
   position: absolute;
   inset: 0;

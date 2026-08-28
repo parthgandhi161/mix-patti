@@ -61,6 +61,7 @@ export function Result({
   onToggleStar,
   onToggleMute,
   canMuteThis = true,
+  onRevealDimChange = () => {},
 }) {
   // Read once, so this can't flip mid-reveal - same reasoning as
   // Mixing.jsx's own [reduced] state.
@@ -115,6 +116,19 @@ export function Result({
 
   const bigRevealActive =
     sideshowBannedThisRound && revealStarted && revealPhase === 'big'
+
+  // Lets App.jsx dim the header/footer (shell--dim/appHeader--dim) in
+  // sync with this stage's own reveal overlay, the same way it already
+  // dims them for stage === 'mixing' - see the comment above
+  // .result__revealOverlay in Result.css for why that overlay alone
+  // isn't enough. Split into two effects (rather than one effect whose
+  // cleanup also fires on every bigRevealActive flip) so App.jsx is
+  // only ever reset to false on a genuine unmount, not on every settle.
+  useEffect(() => {
+    onRevealDimChange(bigRevealActive)
+  }, [bigRevealActive, onRevealDimChange])
+
+  useEffect(() => () => onRevealDimChange(false), [onRevealDimChange])
 
   return (
     <div className="stage result">
