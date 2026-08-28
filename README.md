@@ -117,8 +117,8 @@ src/
     Result.jsx / Result.css   Stage 3 - name + up to 3 summary badges; once
                               a player roster exists, also uses band 1 for
                               the dealer line; star/mute toggles for the
-                              shown twist sit inset in the card's own
-                              bottom-left corner, not a new band
+                              shown twist float beside the card's right
+                              edge, vertically centred, not a new band
     RulesSheet.jsx            Stage 4 - per-variation rules, "Show rules";
                               toggle in the sheet head switches between the
                               dense list and a one-step-at-a-time "explain"

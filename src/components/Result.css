@@ -64,20 +64,31 @@
   animation: cardBreathe 5s ease-in-out 500ms infinite;
 }
 
-/* Star/mute preference toggles for the currently-shown variation. Inset
-   INSIDE the card's own box (not hung off the edge like .result__banStamp
-   below) - deliberately, so they add nothing to .stage__card's auto-sized
-   grid row and can never touch --band-under/--chrome/--card-w. Anchored to
-   the bottom-left corner: the one corner nothing else claims
-   (.card__pip--tl is top-left, .card__pip--br is bottom-right, the ban
-   stamp claims top-right when it fires). */
+/* Star/mute preference toggles for the currently-shown variation. Sits
+   OUTSIDE the card, in the margin beside its right edge (`left: 100%` -
+   the card's own right edge, since .result__cardWrap is the positioning
+   parent - plus a fixed gap), not inset over the card face: an inset
+   overlay tried first and clipped straight through wide/multi-line names
+   at narrower widths (e.g. "Parda Faash" on iPhone SE) since the card's
+   name text is centred and can span nearly the full card width. Sitting
+   beside the card instead can never collide with it regardless of name
+   length. Still `position: absolute` against `.result__cardWrap`, so it
+   contributes nothing to .stage__card's auto-sized grid row and can never
+   touch --band-under/--chrome/--card-w - the stage's own side padding is
+   what guarantees room for it (see --card-cap in global.css, which caps
+   the card short of the full stage width for exactly this kind of
+   margin). Vertically centred on the card, not a corner, so a two-item
+   stack reads as one quiet toolbar. */
 .result__prefs {
   position: absolute;
   z-index: 2; /* above the card face, below .result__revealOverlay (4)
     and .result__banStamp (5) */
-  bottom: 14px;
-  left: 14px;
+  top: 50%;
+  left: 100%;
+  margin-left: 12px;
+  transform: translateY(-50%);
   display: flex;
+  flex-direction: column;
   gap: 6px;
 }
 
