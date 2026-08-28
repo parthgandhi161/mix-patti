@@ -42,8 +42,16 @@
    buttons (.appHeader__icon / .mute / .fullscreenToggle) exactly - same
    40px circle, night-3 fill, line border, and opacity/scale interaction -
    rather than the gold "X deals" pill, so it reads as a real, familiar
-   tappable control instead of a quiet text hint that can go unnoticed. */
+   tappable control instead of a quiet text hint that can go unnoticed.
+   justify-self: end (overriding .stage's justify-items: center, which
+   the populated pill above still uses) pins it to the same right edge
+   the header's mute button sits against, one row down - "beside sound"
+   without actually joining the header's own fixed-width 88px column,
+   which is already full on a touch device before fullscreen is entered
+   (FullscreenToggle + MuteToggle, 40+6+40 = 86px, no room for a third
+   icon at this size). */
 .result__dealer--empty {
+  justify-self: end;
   width: 40px;
   height: 40px;
   padding: 0;
