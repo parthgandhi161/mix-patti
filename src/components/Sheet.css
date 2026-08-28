@@ -143,16 +143,25 @@
   border: 1px solid var(--line);
   color: var(--ivory);
   font-family: var(--font-body);
-  font-size: 15px;
+  /* 16px, not 15: below 16px iOS Safari treats a focused input as a
+     "zoom in to read this" cue and auto-scales the whole page. */
+  font-size: 16px;
 }
 
 .browseSheet__input::placeholder {
   color: var(--lav-dim);
 }
 
+/* inset, not outline+offset: this input sits flush against
+   .sheet__body's top/left/right edges (no padding of its own there),
+   and .sheet__body's overflow-y: auto implicitly makes overflow-x
+   non-visible too - so an outline's offset ring had no room to render
+   and was clipped on those three sides. An inset shadow draws inside
+   the border box instead, which can never be clipped by an ancestor's
+   overflow regardless of how close to its edge the element sits. */
 .browseSheet__input:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--gold);
 }
 
 .browseSheet__list {
@@ -225,16 +234,21 @@
   border: 1px solid var(--line);
   color: var(--ivory);
   font-family: var(--font-body);
-  font-size: 15px;
+  /* 16px, not 15: below 16px iOS Safari treats a focused input as a
+     "zoom in to read this" cue and auto-scales the whole page. */
+  font-size: 16px;
 }
 
 .playersSheet__input::placeholder {
   color: var(--lav-dim);
 }
 
+/* inset, not outline+offset - see .browseSheet__input:focus-visible's
+   comment above, same bug, same fix: this input is likewise the first
+   flush child of a scrolling .sheet__body. */
 .playersSheet__input:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--gold);
 }
 
 /* Overrides buttons.css's .btn--gold { width: 100% } so it sits inline

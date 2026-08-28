@@ -66,7 +66,7 @@ export function Header({
             onClick={onOpenPlayers}
             aria-label="Add players"
           >
-            <span aria-hidden="true">+</span>
+            <span aria-hidden="true">👤</span>
           </button>
         )}
       </div>

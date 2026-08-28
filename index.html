@@ -4,10 +4,14 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!-- viewport-fit=cover + the dvh units in CSS keep the layout stable when
-         mobile browser chrome slides in and out. -->
+         mobile browser chrome slides in and out. interactive-widget=resizes-content
+         (Chrome 108+, iOS Safari 17.4+) makes the on-screen keyboard shrink the
+         layout viewport - and so dvh - the same way the browser chrome already
+         does, instead of just panning the visual viewport, which is what read as
+         an unwanted "website" scroll/zoom when a sheet's input got focused. -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
     <meta name="theme-color" content="#160821" />
     <meta
