@@ -147,6 +147,11 @@ See the README's "Layout" section for the full file-by-file map.
   **must never become `async`** - a late cue doesn't sound late, it
   sounds wrong, because a different card is on screen by then. Mute is a
   gain node on the output, never `if (!muted)` at the call sites.
+- **The version shown in the footer comes straight from `package.json`.**
+  `Brand.jsx` does `import { version } from '../../package.json'` - Vite's
+  built-in JSON loader exports it as a named binding, no `vite.config.js`
+  changes or `import.meta.env` plumbing needed. Don't add a second place
+  that stores the version number.
 - **Respect `prefers-reduced-motion`.** Both `global.css` (a blanket
   animation-duration override) and `Mixing.jsx` (skips straight to the
   landed state) already handle it - preserve that when touching animation
@@ -180,3 +185,19 @@ See the README's "Layout" section for the full file-by-file map.
 and publishes to `https://parthgandhi161.github.io/mix-patti/` via GitHub
 Actions - there's no separate deploy command to run locally, and no
 staging environment. Pushing to `main`/`master` **is** the deploy.
+
+## Releasing
+
+`npm version patch|minor|major` bumps `package.json`, commits, and tags in
+one step; `git push --follow-tags` pushes both. The tag push fires
+`.github/workflows/release.yml`, which publishes a GitHub Release with
+auto-generated notes - nothing to run by hand beyond those two commands.
+
+**On every commit you make to this repo that changes app behavior, bump
+the version and push the tag yourself, without being asked** - patch for
+fixes/polish, minor for new features or content, major reserved for a
+deliberate breaking relaunch (nothing so far has warranted one - this is a
+UI app with no public API, so "major" isn't about compatibility, it's about
+signalling a genuine relaunch). Tag pushes only trigger `release.yml`; they
+don't add a new deploy pathway - pushing to `main`/`master` already deploys
+today regardless of tags, per the paragraph above.

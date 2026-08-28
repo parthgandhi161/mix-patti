@@ -15,3 +15,9 @@
 .credit__heart {
   color: var(--pink);
 }
+
+.credit__version {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+}

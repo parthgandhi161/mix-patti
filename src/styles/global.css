@@ -221,7 +221,7 @@ body.is-mixing {
      and Result's two stacked buttons need 140. */
   --band-top: 88px;
   --band-under: 52px;
-  --band-bottom: 140px;
+  --band-bottom: 154px;
 
   /* Everything that isn't the card, single-sourced so it can't drift
      out of step with the rows above. */
@@ -261,7 +261,8 @@ body.is-mixing {
 
 /* Band 4 - the stage's own controls, bottom-aligned so the primary
    button sits at the same height regardless of what's above it, and
-   clear of the absolutely-positioned .credit in the last ~22px. */
+   clear of the absolutely-positioned .credit (now two lines - the
+   made-with-love text plus the version) in the last ~36px. */
 .stage__foot {
   grid-row: 4;
   width: 100%;
@@ -271,7 +272,7 @@ body.is-mixing {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding-bottom: 18px;
+  padding-bottom: 32px;
 }
 
 @media (prefers-reduced-motion: reduce) {

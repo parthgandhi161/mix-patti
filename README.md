@@ -24,6 +24,22 @@ The dev URL includes `/mix-patti/` because `base` is set for GitHub Pages
 or `master`. One-time setup: **repo Settings → Pages → Source → GitHub
 Actions**.
 
+## Releasing
+
+The version in `package.json` is shown live on the site, under the "made
+with ♥" footer credit (`src/components/Brand.jsx` imports it straight from
+`package.json`). To cut a release:
+
+```bash
+npm version patch   # or minor / major
+git push --follow-tags
+```
+
+`npm version` bumps `package.json`, commits, and tags in one step. Pushing
+the tag triggers `.github/workflows/release.yml`, which publishes a GitHub
+Release with auto-generated notes - no separate release step to run by
+hand.
+
 ## Visual checks with Playwright
 
 Playwright is a `devDependency`, kept around for one-off visual
