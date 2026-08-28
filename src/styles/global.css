@@ -12,6 +12,10 @@
   --gold: #f4c64a; /* IDENTITY - wordmark, button, joker */
   --gold-deep: #d99b28;
   --pink: #ff4e8e; /* rani pink - win condition */
+  --red-ban: #d81e3f; /* deep prohibition red for the sideshow-banned
+    reveal - deliberately more saturated/red than --pink, which already
+    means "win" elsewhere on this same screen, so this restriction moment
+    reads as a real no-entry sign rather than another brand-pink accent */
   --teal: #25cdb9; /* peacock - step numbers, highlight */
   --ivory: #fbf1de; /* primary text */
   --lav: #b79ccf; /* secondary text */

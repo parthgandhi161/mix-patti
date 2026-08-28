@@ -43,8 +43,9 @@ export function summariseBadges(variation) {
 }
 
 /** Single flowing string, for the screen-reader announcement. */
-export function summarise(variation) {
-  return summariseBadges(variation)
+export function summarise(variation, { sideshowBannedThisRound = false } = {}) {
+  const base = summariseBadges(variation)
     .map((b) => b.label)
     .join(' · ')
+  return sideshowBannedThisRound ? `${base} · Sideshow banned this round` : base
 }

@@ -26,6 +26,15 @@
   outline-offset: 3px;
 }
 
+/* First disabled button in the app (Result's two buttons, while the
+   sideshow-banned big reveal plays). The overlay above them already
+   blocks/dims visually via z-index, but disabled removes them from the
+   tab order too, so a keyboard user can't reach past the overlay. */
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn--gold {
   width: 100%;
   color: #2a1206;

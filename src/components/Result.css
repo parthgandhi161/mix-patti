@@ -3,8 +3,18 @@
    arrival read as two separate fades. Layout comes from .stage's three
    bands in global.css. */
 
-.result__card {
+/* Sizing anchor for the sideshow stamp: takes over the width .result__card
+   used to set directly, so an absolutely-positioned sibling can be placed
+   relative to the card's actual box. Adds no padding/border, so .card
+   renders in exactly the same box it did before this wrapper existed. */
+.result__cardWrap {
+  position: relative;
   width: var(--card-w);
+}
+
+.result__card {
+  /* width now comes from .result__cardWrap via Card.css's base
+     .card { width: 100% } rule */
   /* A quiet resting-state loop once the card has landed - the shimmer
      sweep and the stage crossfade are one-shot, so without this the card
      just sits dead still. Delayed past both so it doesn't fight them. */
@@ -19,6 +29,135 @@
   50% {
     transform: scale(1.015);
   }
+}
+
+/* Rare-round badge (~1 in 5, when sideshow is banned this round). Big
+   and settled are two SEPARATE elements sharing a Framer Motion
+   layoutId (Result.jsx) - the swap between them is a measured
+   shared-layout transition, not a hand-authored transform. Not part of
+   .result__badges below - that row is already sized to its one-line
+   widest case and has no room for a fourth pill. */
+.result__banStamp {
+  z-index: 5; /* above .result__revealOverlay (4), so the reveal itself
+    never dims along with everything behind it */
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  background: linear-gradient(165deg, var(--red-ban), #6e0f22);
+  border: 1px solid rgba(255, 214, 230, 0.5);
+  box-shadow: 0 6px 16px rgba(216, 30, 63, 0.4);
+}
+
+/* Settled: the small corner pill, positioned against .result__cardWrap
+   rather than .card itself, since .card has overflow: hidden for its
+   watermark/shimmer and would clip anything hanging past the corner. */
+.result__banStamp--settled {
+  position: absolute;
+  top: -10px;
+  right: 10px;
+  padding: 5px 10px;
+}
+
+/* Big: centred over the card via the standard top/left 50% +
+   translate(-50%,-50%) trick - correct regardless of card or badge
+   size, no percentage-of-self math to get wrong. Sized with real
+   padding/font-size, not a scale() blow-up, which is what pushed the
+   previous attempt off-screen (scale compounding with a percentage
+   translate and a corner transform-origin). Checked against the
+   narrowest supported card width (iPhone SE) with room to spare.
+
+   The -50%/-50% translate itself is NOT set here: Result.jsx animates
+   `scale` on this element via Framer Motion, which takes over its
+   inline `transform` entirely the moment it does, silently discarding
+   whatever a plain CSS `transform` declared here. The centering
+   translate is re-declared as `x`/`y` in Result.jsx's motion props
+   instead, so Framer Motion composes it together with `scale` in the
+   one transform it owns. */
+.result__banStamp--big {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: 14px 22px;
+}
+
+.result__banStamp--big .result__banIcon {
+  width: 24px;
+  height: 24px;
+  border-width: 3px;
+}
+
+.result__banStamp--big .result__banIcon::after {
+  width: 3px;
+  height: 26px;
+}
+
+.result__banStamp--big .result__banStampLabel {
+  font-size: 16px;
+}
+
+.result__banIcon {
+  position: relative;
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid var(--ivory);
+  box-sizing: border-box;
+}
+
+/* The diagonal slash - built the same way as this app's other
+   hand-rolled decorative shapes (Card.css's lattice/medallion): a plain
+   pseudo-element, no SVG, no icon font, no emoji. Taller than the
+   circle's own diameter so it reads edge-to-edge once rotated, the way a
+   real no-entry sign's bar clears its ring. */
+.result__banIcon::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 15px;
+  background: var(--ivory);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.result__banStampLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ivory);
+  white-space: nowrap;
+}
+
+/* Dims and blocks the rest of the Result screen while the big phase
+   plays - scoped to this stage only, not App.jsx's body-level
+   .shell--dim (that's keyed to stage === 'mixing' and also dims the
+   header/suits outside the shell, a bigger hammer than a same-screen
+   flourish needs - the header stays live/tappable during this reveal,
+   an accepted trade-off). Fills .stage (the nearest positioned
+   ancestor), so it covers the card, badge row and buttons without
+   reaching the header above it. Doubles as the tap-to-skip target; the
+   buttons underneath also get `disabled` in Result.jsx so Tab+Enter
+   can't reach past it either. */
+.result__revealOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 18px; /* lines the hint up with .mixing__skip's spot */
+  background: rgba(10, 3, 16, 0.72);
+  cursor: pointer;
+}
+
+.result__revealSkip {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lav-dim);
+  opacity: 0.85;
 }
 
 /* The whole point of the resting state - a reminder, not a headline -

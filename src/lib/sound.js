@@ -510,3 +510,84 @@ export function playLand() {
     ghungroo(g, t0 + 0.04)
   })
 }
+
+function scheduleSting(g, at) {
+  drum(g, at, 'low', 0.6)
+  drum(g, at + 0.08, 'high', 0.4)
+}
+
+/**
+ * A synthesised tension riser: one sawtooth sweeping upward in pitch and
+ * opening in a lowpass filter (the classic "building" sound), gaining in
+ * both volume and in the density of overlaid riffle() ticks as it goes -
+ * reuses the existing noise-burst voice rather than inventing a second
+ * new primitive, so the escalation reads as a mounting flurry, not just
+ * a tone getting louder. The sustained oscillator is the one genuinely
+ * new voice here: drum/chime/ghungroo are all short percussive hits or
+ * bright decays, none can hold a rising tone for multiple seconds.
+ */
+function scheduleRiser(g, at, secs) {
+  const osc = g.ctx.createOscillator()
+  osc.type = 'sawtooth'
+  osc.frequency.setValueAtTime(85, at)
+  osc.frequency.exponentialRampToValueAtTime(340, at + secs)
+
+  const lp = g.ctx.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.Q.value = 1.2
+  lp.frequency.setValueAtTime(260, at)
+  lp.frequency.exponentialRampToValueAtTime(2400, at + secs)
+
+  const gn = g.ctx.createGain()
+  gn.gain.setValueAtTime(0.0001, at)
+  gn.gain.exponentialRampToValueAtTime(0.38, at + secs * 0.9)
+  gn.gain.setValueAtTime(0.38, at + secs * 0.9)
+  gn.gain.exponentialRampToValueAtTime(0.0001, at + secs) // clears just
+    // before the sting, so the two don't smear into one sound
+
+  osc.connect(lp).connect(gn).connect(g.bus)
+  osc.start(at)
+  osc.stop(at + secs + 0.02)
+  track(osc)
+
+  // Escalating riffle density: sparse at first, tight by the end - the
+  // same "bunch the bursts" idea as playShuffle(), but bunching toward
+  // the END here, since tension should feel like it's accelerating into
+  // the hit rather than settling out of one.
+  const n = 22
+  for (let i = 0; i < n; i++) {
+    const p = i / n
+    const tAt = at + p * p * secs * 0.94
+    riffle(g, tAt, {
+      gain: 0.1 + p * 0.22,
+      freq: 1400 + p * 2400,
+      len: 0.04 + p * 0.03,
+    })
+  }
+}
+
+/**
+ * Sideshow-banned "no entry" reveal: a rising-tension riser that builds
+ * for `ms` (Result.jsx owns this duration - see REVEAL_HOLD_MS there)
+ * and resolves into the same sting playBanSting() plays standalone. One
+ * synchronous cue(), like playShuffle(): every oscillator/riffle/drum is
+ * scheduled up front against future `at` offsets, so stopAll() can cut
+ * it clean mid-build - see Result.jsx's handleSkip, which does exactly
+ * that and then fires playBanSting() fresh, mirroring how Mixing.jsx's
+ * own skip handler cuts the in-flight cue and fires playLand() instead.
+ */
+export function playBanRiser(ms) {
+  cue((g, t0) => {
+    const secs = ms / 1000
+    scheduleRiser(g, t0, secs)
+    scheduleSting(g, t0 + secs)
+  })
+}
+
+/** The resolving hit alone - a flat double rap, the opposite mood of
+ * playLand()'s bright chime, since this cue announces a restriction
+ * rather than a win. Used both at the end of playBanRiser()'s build and
+ * standalone when tap-to-skip cuts the riser short. */
+export function playBanSting() {
+  cue((g, t0) => scheduleSting(g, t0))
+}
