@@ -7,7 +7,7 @@
      FullscreenToggle shows/hides itself by platform/state (permanently
      on iOS, which has no Fullscreen API at all, until the app is
      installed standalone), so it can coexist with MuteToggle AND the
-     optional add-players icon (3 * 40px + 2 * 6px gap = 132px). Both
+     always-visible players icon (3 * 40px + 2 * 6px gap = 132px). Both
      columns widen together, symmetrically, so the wordmark - centred in
      the middle track - stays exactly centred regardless of how many
      icons actually render on either side. */

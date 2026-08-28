@@ -114,13 +114,14 @@ src/
     BrowseSheet.jsx           Stage 6 - searchable list of every twist, 📖
                               button; picking a row opens RulesSheet on top
     PlayersSheet.jsx          Stage 7 - optional roster + dealer rotation;
-                              opened from the header's add-players icon
-                              (empty roster) or Result's band-1 dealer
-                              line (once one exists)
+                              opened from the header's players icon
+                              (always there) or, once a dealer exists,
+                              Result's band-1 dealer line too
     Sheet.css                 shared sheet chrome for stages 4, 5, 6 and 7
     Card.jsx / Card.css       shared card back / card face
     Header.jsx / Header.css   centred small wordmark, mute + fullscreen +
-                              (empty roster only) add-players, shown on
+                              players (always visible - add or manage,
+                              label depends on roster state), shown on
                               every stage except the sheets
     MuteToggle.jsx / MuteToggle.css  the mute button, laid out inside Header
     FullscreenToggle.jsx / FullscreenToggle.css  requests fullscreen +
