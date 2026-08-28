@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CardFace } from './Card'
+import { MIN_UNMUTED } from '../lib/pick'
 import { summarise, summariseBadges } from '../lib/summary'
 import { playBanRiser, playBanSting, stopAll } from '../lib/sound'
 import { prefersReducedMotion } from '../lib/timing'
@@ -55,6 +56,11 @@ export function Result({
   onShowRules,
   dealerName,
   onOpenPlayers,
+  starred = false,
+  muted = false,
+  onToggleStar,
+  onToggleMute,
+  canMuteThis = true,
 }) {
   // Read once, so this can't flip mid-reveal - same reasoning as
   // Mixing.jsx's own [reduced] state.
@@ -121,6 +127,36 @@ export function Result({
       <div className="stage__card">
         <div className="result__cardWrap">
           <CardFace variation={variation} className="result__card" />
+          <div className="result__prefs">
+            <button
+              type="button"
+              className="result__prefBtn"
+              onClick={onToggleStar}
+              disabled={bigRevealActive}
+              aria-pressed={starred}
+              aria-label={starred ? 'Unstar this twist' : 'Star this twist'}
+              title={starred ? 'Unstar' : 'Star (drawn more often)'}
+            >
+              <span aria-hidden="true">{starred ? '★' : '☆'}</span>
+            </button>
+            <button
+              type="button"
+              className="result__prefBtn result__prefBtn--mute"
+              onClick={onToggleMute}
+              disabled={bigRevealActive || (!muted && !canMuteThis)}
+              aria-pressed={muted}
+              aria-label={muted ? 'Unmute this twist' : 'Mute this twist'}
+              title={
+                !muted && !canMuteThis
+                  ? `Keep at least ${MIN_UNMUTED} twists in the draw`
+                  : muted
+                    ? 'Unmute (back in the draw)'
+                    : 'Mute (never drawn)'
+              }
+            >
+              <span aria-hidden="true">{muted ? '🔕' : '🔔'}</span>
+            </button>
+          </div>
           {sideshowBannedThisRound &&
             revealStarted &&
             (revealPhase === 'big' ? (

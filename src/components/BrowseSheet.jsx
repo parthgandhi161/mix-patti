@@ -21,6 +21,12 @@ function matches(variation, query) {
   return variation.alsoKnownAs.some((aka) => aka.toLowerCase().includes(query))
 }
 
+const FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'starred', label: '★ Starred' },
+  { key: 'muted', label: '🔕 Muted' },
+]
+
 /**
  * Stage 6 - every twist, searchable by name or alias. Selecting a row
  * opens RulesSheet on top (see App.jsx's browseTarget); closing that
@@ -29,14 +35,35 @@ function matches(variation, query) {
  * button hidden underneath it - there's no focus trap anywhere else in
  * this app, so without it Shift+Tab could reach and activate this
  * sheet's own close button while still visually buried.
+ *
+ * Each row also carries star/mute toggles, plus an All/Starred/Muted
+ * filter above the list so a group can review what they've done. Muted
+ * rows stay fully visible and openable here - muting only removes a
+ * twist from the draw (src/lib/pick.js), never from the rulebook.
  */
-export function BrowseSheet({ variations, browseTarget, onClose, onSelect }) {
+export function BrowseSheet({
+  variations,
+  browseTarget,
+  onClose,
+  onSelect,
+  isStarred,
+  isMuted,
+  onToggleStar,
+  onToggleMute,
+  canToggleMute,
+}) {
   const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState('all')
 
   const q = query.trim().toLowerCase()
   const results = [...variations]
     .sort((a, b) => a.name.localeCompare(b.name))
     .filter((variation) => matches(variation, q))
+    .filter((variation) => {
+      if (filter === 'starred') return isStarred(variation.id)
+      if (filter === 'muted') return isMuted(variation.id)
+      return true
+    })
 
   return (
     <motion.div
@@ -74,28 +101,74 @@ export function BrowseSheet({ variations, browseTarget, onClose, onSelect }) {
           />
         </div>
 
+        <div className="browseSheet__filters" role="group" aria-label="Filter twists">
+          {FILTERS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              className="browseSheet__filterBtn"
+              aria-pressed={filter === key}
+              onClick={() => setFilter(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         {results.length === 0 ? (
-          <p className="browseSheet__empty">No twists match "{query}".</p>
+          <p className="browseSheet__empty">
+            {query ? `No twists match "${query}".` : 'No twists in this filter yet.'}
+          </p>
         ) : (
           <ul className="browseSheet__list">
-            {results.map((variation, i) => (
-              <li key={variation.id}>
-                <button
-                  type="button"
-                  className="browseSheet__row"
-                  onClick={() => onSelect(variation)}
+            {results.map((variation, i) => {
+              const starred = isStarred(variation.id)
+              const muted = isMuted(variation.id)
+              return (
+                <li
+                  key={variation.id}
+                  className={`browseSheet__item${muted ? ' browseSheet__item--muted' : ''}`}
                 >
-                  <span
-                    className="browseSheet__suit"
-                    style={{ color: SUIT_COLORS[i % SUIT_COLORS.length] }}
-                    aria-hidden="true"
+                  <button
+                    type="button"
+                    className="browseSheet__row"
+                    onClick={() => onSelect(variation)}
                   >
-                    {SUITS[i % SUITS.length]}
-                  </span>
-                  <span className="browseSheet__name">{variation.name}</span>
-                </button>
-              </li>
-            ))}
+                    <span
+                      className="browseSheet__suit"
+                      style={{ color: SUIT_COLORS[i % SUIT_COLORS.length] }}
+                      aria-hidden="true"
+                    >
+                      {SUITS[i % SUITS.length]}
+                    </span>
+                    <span className="browseSheet__name">{variation.name}</span>
+                  </button>
+                  <div className="browseSheet__rowActions">
+                    <button
+                      type="button"
+                      className="browseSheet__iconBtn"
+                      onClick={() => onToggleStar(variation.id)}
+                      aria-pressed={starred}
+                      aria-label={starred ? `Unstar ${variation.name}` : `Star ${variation.name}`}
+                      title={starred ? 'Unstar' : 'Star (drawn more often)'}
+                    >
+                      <span aria-hidden="true">{starred ? '★' : '☆'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="browseSheet__iconBtn browseSheet__iconBtn--mute"
+                      onClick={() => onToggleMute(variation.id)}
+                      disabled={!muted && !canToggleMute(variation.id)}
+                      aria-pressed={muted}
+                      aria-label={muted ? `Unmute ${variation.name}` : `Mute ${variation.name}`}
+                      title={muted ? 'Unmute (back in the draw)' : 'Mute (never drawn)'}
+                    >
+                      <span aria-hidden="true">{muted ? '🔕' : '🔔'}</span>
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>

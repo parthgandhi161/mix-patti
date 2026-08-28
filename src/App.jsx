@@ -14,6 +14,7 @@ import { Credit } from './components/Brand'
 import { useMuted } from './lib/useMuted'
 import { useImmersive } from './lib/immersive'
 import { usePlayers } from './lib/usePlayers'
+import { useVariationPrefs } from './lib/useVariationPrefs'
 import { pickNext } from './lib/pick'
 import { primeAudio } from './lib/sound'
 
@@ -66,6 +67,15 @@ export default function App() {
     advanceDealer,
     clearPlayers,
   } = usePlayers()
+  const {
+    starredIds,
+    mutedIds,
+    isStarred,
+    isMuted,
+    toggleStarred,
+    toggleMuted: toggleVariationMuted,
+    canToggleMute,
+  } = useVariationPrefs(variations)
 
   // Mirrors .shell--dim/.appHeader--dim one level higher, on <body>
   // itself - see the .is-mixing rule in global.css for why.
@@ -73,6 +83,11 @@ export default function App() {
     document.body.classList.toggle('is-mixing', stage === 'mixing')
     return () => document.body.classList.remove('is-mixing')
   }, [stage])
+
+  // Excludes muted twists from the carousel's decorative spin too, not
+  // just the actual draw (pick.js) - a group that muted a twist because
+  // they refuse to play it shouldn't still see it flash by as a decoy.
+  const mixingDecoyVariations = variations.filter((v) => !isMuted(v.id))
 
   const showChrome = stage !== 'mixing' && !overlay
   // The header (hamburger + wordmark + mute/fullscreen) is identical on
@@ -96,6 +111,7 @@ export default function App() {
     const { variation, sideshowBannedThisRound: banned } = pickNext(
       variations,
       current?.id,
+      { mutedIds, starredIds },
     )
     setCurrent(variation)
     setSideshowBannedThisRound(banned)
@@ -146,7 +162,7 @@ export default function App() {
             <motion.div key={`mixing-${current.id}`} {...FADE}>
               <Mixing
                 variation={current}
-                variations={variations}
+                variations={mixingDecoyVariations}
                 onFinish={() => setStage('result')}
               />
             </motion.div>
@@ -161,6 +177,11 @@ export default function App() {
                 onShowRules={() => setOverlay('rules')}
                 dealerName={dealerName}
                 onOpenPlayers={() => setOverlay('players')}
+                starred={isStarred(current.id)}
+                muted={isMuted(current.id)}
+                onToggleStar={() => toggleStarred(current.id)}
+                onToggleMute={() => toggleVariationMuted(current.id)}
+                canMuteThis={canToggleMute(current.id)}
               />
             </motion.div>
           )}
@@ -182,6 +203,11 @@ export default function App() {
             browseTarget={browseTarget}
             onClose={() => setOverlay(null)}
             onSelect={setBrowseTarget}
+            isStarred={isStarred}
+            isMuted={isMuted}
+            onToggleStar={toggleStarred}
+            onToggleMute={toggleVariationMuted}
+            canToggleMute={canToggleMute}
           />
         )}
         {browseTarget && (

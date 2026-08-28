@@ -87,9 +87,13 @@ src/
   data/variations.json        the 27 twists (schema untouched)
   lib/
     pick.js                   random pick, never the same twist twice in a
-                              row
+                              row - now also starring (drawn more often)
+                              and muting (never drawn) layered on top; see
+                              the file's own JSDoc for the three-bag
+                              design and the MIN_UNMUTED floor
     storage.js                shared localStorage get/set (raw string +
-                              JSON), used by pick.js and useMuted.js
+                              JSON), used by pick.js, useMuted.js and
+                              useVariationPrefs.js
     summary.js                builds the Deal / Win / Twist result badges
     timing.js                 the mix timeline (single source of truth)
     sound.js                  desi percussion, synthesised with Web Audio;
@@ -99,6 +103,8 @@ src/
                               remembered in localStorage
     usePlayers.js              optional player roster + rotating dealer,
                               remembered in localStorage
+    useVariationPrefs.js       starred/muted twist ids, remembered in
+                              localStorage under two separate keys
     immersive.js               fullscreen + wake lock on mobile, entered on
                               tap
   components/                 one component + one same-named .css file per
@@ -110,14 +116,19 @@ src/
     Mixing.jsx / Mixing.css   Stage 2 - shuffle → carousel → land
     Result.jsx / Result.css   Stage 3 - name + up to 3 summary badges; once
                               a player roster exists, also uses band 1 for
-                              the dealer line
+                              the dealer line; star/mute toggles for the
+                              shown twist sit inset in the card's own
+                              bottom-left corner, not a new band
     RulesSheet.jsx            Stage 4 - per-variation rules, "Show rules";
                               toggle in the sheet head switches between the
                               dense list and a one-step-at-a-time "explain"
                               mode for reading rules aloud at the table
     HouseRulesSheet.jsx       Stage 5 - the four house rules, ☰ button
     BrowseSheet.jsx           Stage 6 - searchable list of every twist, 📖
-                              button; picking a row opens RulesSheet on top
+                              button; picking a row opens RulesSheet on
+                              top; each row also has star/mute toggles,
+                              plus an All/Starred/Muted filter above the
+                              list
     PlayersSheet.jsx          Stage 7 - optional roster + dealer rotation;
                               opened from the header's players icon
                               (always there) or, once a dealer exists,

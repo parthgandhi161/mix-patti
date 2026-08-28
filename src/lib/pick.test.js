@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import variations from '../data/variations.json'
-import { bannedRollRate, pickNext, shuffled } from './pick.js'
+import { MIN_UNMUTED, bannedRollRate, pickNext, shuffled } from './pick.js'
 
 const STATE_KEY = 'mixpatti.pickState'
 
@@ -218,22 +218,40 @@ describe('pickNext - back-to-back strict-banned picks and the reroll cap', () =>
     // call for the roll). backToBack is true on attempts 1-3 (each
     // rerolled) and attempt 4 is accepted unconditionally.
     //
+    // Both fixture entries are priority: 1, so bagB/bagStar are empty
+    // (starredIds defaults to [] too) - every attempt's bag-choice roll
+    // picks bagA, with no extra Math.random cost from the starred
+    // pre-roll (starEligible is false, so `useStarred` short-circuits
+    // before ever calling Math.random).
+    //
+    // Call 1 left bagA holding 1 leftover id (whichever of x/y wasn't
+    // drawn) - call it `leftover`, and `first.variation.id` (== this
+    // call's previousId) is the OTHER one, already popped out of bagA.
+    //
     // Hand-traced against pick.js's actual source, call by call, with
-    // Math.random pinned at 0.01 throughout:
-    //   attempt 1: bag-choice only (1 item left over from call 1, so
-    //     drawFrom reuses it with no reshuffle)              -> 1 call
-    //   attempt 2: bag-choice + reshuffle (bag ran dry - 1
-    //     Fisher-Yates step for this 2-item list) + same-as-
-    //     previous-id swap-check (the shuffle puts previousId
-    //     on top)                                             -> 3 calls
-    //   attempt 3: bag-choice only (1 item left over again)   -> 1 call
+    // Math.random pinned at 0.01 throughout - drawFrom()'s reshuffle
+    // guard now also fires whenever exactly one id is left AND it equals
+    // previousId (not just when the bag is fully empty), which this
+    // fixture hits from attempt 3 onward, once bagA cycles back around
+    // to holding only previousId as its sole leftover:
+    //   attempt 1: bag-choice + drawFrom reuses the 1-item
+    //     `remaining` as-is (it's `leftover`, which isn't
+    //     previousId, so the new guard doesn't force a
+    //     reshuffle here) - no swap needed either (top === 0)  -> 1 call
+    //   attempt 2: bag-choice + reshuffle (bagA ran dry) +
+    //     same-as-previous-id swap-check (the shuffle puts
+    //     previousId on top) - the swap sets previousId aside
+    //     as bagA's new 1-item leftover                        -> 3 calls
+    //   attempt 3: bag-choice + reshuffle (bagA's leftover IS
+    //     previousId now, so the hardened guard forces a fresh
+    //     reshuffle instead of reusing it) + swap-check         -> 3 calls
     //   attempt 4: bag-choice + reshuffle + swap-check, same
-    //     shape as attempt 2                                  -> 3 calls
-    //   total                                                 -> 8 calls
+    //     shape as attempt 3                                   -> 3 calls
+    //   total                                                  -> 10 calls
     const second = pickNext(alwaysBanned, first.variation.id)
 
     expect(second.sideshowBannedThisRound).toBe(true)
-    expect(spy).toHaveBeenCalledTimes(8)
+    expect(spy).toHaveBeenCalledTimes(10)
   })
 
   it('terminates promptly under worst-case back-to-back conditions (no infinite loop)', () => {
@@ -259,6 +277,182 @@ describe('pickNext - back-to-back strict-banned picks and the reroll cap', () =>
     // No hard guarantee (attempt 4 always accepts) - assert "rare", not
     // "zero", with a generously safe upper bound relative to trials.
     expect(backToBackStrict).toBeLessThan(trials * 0.01)
+  })
+})
+
+describe('pickNext - muting', () => {
+  it('never draws a muted id across many draws', () => {
+    const mutedIds = variations.slice(0, 6).map((v) => v.id) // well above MIN_UNMUTED for this 27-entry dataset
+    const mutedSet = new Set(mutedIds)
+    let previousId
+    for (let i = 0; i < 1000; i++) {
+      const { variation } = pickNext(variations, previousId, { mutedIds })
+      expect(mutedSet.has(variation.id)).toBe(false)
+      previousId = variation.id
+    }
+  })
+
+  it('computes bannedRollRate over the unmuted set, not the full dataset', () => {
+    // 10 synthetic entries, exactly 2 sideshowBanned: true - the strict
+    // share alone already hits TARGET_BANNED_SHARE (0.2), so
+    // bannedRollRate on the FULL list is 0 (shortfall clamps to 0, no
+    // extra roll needed or possible). Muting away those exact 2 strict
+    // entries removes the strict share entirely; if the roll rate is
+    // correctly recomputed over the remaining 8 (all sideshowBanned:
+    // false), it should roll back up to ~20% via the coin flip instead.
+    // A bug that kept computing the rate from the full, unfiltered list
+    // would see this stay at ~0%.
+    const strictIds = ['s1', 's2']
+    const synthetic = [
+      ...strictIds.map((id) => ({ id, priority: 2, sideshowBanned: true })),
+      ...Array.from({ length: 8 }, (_, i) => ({
+        id: `f${i}`,
+        priority: 2,
+        sideshowBanned: false,
+      })),
+    ]
+    expect(bannedRollRate(synthetic)).toBe(0)
+
+    let bannedCount = 0
+    let previousId
+    const trials = 4000
+    for (let i = 0; i < trials; i++) {
+      const { variation, sideshowBannedThisRound } = pickNext(synthetic, previousId, {
+        mutedIds: strictIds,
+      })
+      if (sideshowBannedThisRound) bannedCount++
+      previousId = variation.id
+    }
+    const share = bannedCount / trials
+    expect(share).toBeGreaterThan(0.15)
+    expect(share).toBeLessThan(0.25)
+  })
+})
+
+describe('pickNext - the mute floor (MIN_UNMUTED)', () => {
+  it('ignores the mute set entirely when it would leave nothing unmuted', () => {
+    const mutedIds = variations.map((v) => v.id) // mute everything
+    expect(() => pickNext(variations, undefined, { mutedIds })).not.toThrow()
+    const { variation } = pickNext(variations, undefined, { mutedIds })
+    expect(variations.some((v) => v.id === variation.id)).toBe(true)
+  })
+
+  it('ignores the mute set entirely when it would leave fewer than MIN_UNMUTED unmuted', () => {
+    expect(MIN_UNMUTED).toBe(2) // pin the exact floor this test exercises
+    const mutedIds = variations.slice(1).map((v) => v.id) // mutes all but 1 -> unmutedCount 1 < MIN_UNMUTED
+    const solelyUnmutedId = variations[0].id
+    let sawSomethingElse = false
+    let previousId
+    for (let i = 0; i < 200; i++) {
+      const { variation } = pickNext(variations, previousId, { mutedIds })
+      if (variation.id !== solelyUnmutedId) sawSomethingElse = true
+      previousId = variation.id
+    }
+    // If the mute set were honored (wrongly) at this count, every draw
+    // would be forced onto the one "unmuted" id. Seeing anything else
+    // proves the floor fired and the mute set was ignored outright.
+    expect(sawSomethingElse).toBe(true)
+  })
+
+  it('honors the mute set right at the floor - exactly MIN_UNMUTED unmuted', () => {
+    const unmutedIds = variations.slice(0, 2).map((v) => v.id)
+    const unmutedSet = new Set(unmutedIds)
+    const mutedIds = variations.slice(2).map((v) => v.id) // leaves exactly 2 unmuted
+    let previousId
+    for (let i = 0; i < 200; i++) {
+      const { variation } = pickNext(variations, previousId, { mutedIds })
+      expect(unmutedSet.has(variation.id)).toBe(true)
+      previousId = variation.id
+    }
+  })
+})
+
+describe('pickNext - starring', () => {
+  it('a single starred twist never repeats back-to-back (starEligible gate holds)', () => {
+    // With only 1 eligible starred id, bagStar can never be drawn from at
+    // all (starEligible requires >= 2) - this pins that the pre-roll
+    // really is skipped outright, not just "less likely": without that
+    // gate, a lone starred id's bag would legally repeat itself.
+    const starredIds = [variations[0].id]
+    let previousId
+    for (let i = 0; i < 2000; i++) {
+      const { variation } = pickNext(variations, previousId, { starredIds })
+      if (previousId !== undefined) {
+        expect(variation.id).not.toBe(previousId)
+      }
+      previousId = variation.id
+    }
+  })
+
+  it('draws a starred id at roughly STARRED_SHARE (0.3) when at least 2 are eligible', () => {
+    const starredIds = variations.slice(0, 2).map((v) => v.id)
+    const starredSet = new Set(starredIds)
+    let starredCount = 0
+    let previousId
+    const trials = 6000
+    for (let i = 0; i < trials; i++) {
+      const { variation } = pickNext(variations, previousId, { starredIds })
+      if (starredSet.has(variation.id)) starredCount++
+      previousId = variation.id
+    }
+    const share = starredCount / trials
+    // STARRED_SHARE (0.3) is a private constant, hardcoded here as a
+    // literal - same convention as TARGET_BANNED_SHARE's 0.2 elsewhere in
+    // this file. The true share is slightly ABOVE 0.3: a starred id can
+    // also be drawn via the ordinary bagA/bagB path on the ~70% of
+    // attempts the starred pre-roll misses. The tolerance band is wide
+    // enough to absorb that plus statistical noise without masking a real
+    // regression (e.g. the pre-roll not firing at all, which would drop
+    // this down to each item's tiny natural bagA/bagB share instead).
+    expect(share).toBeGreaterThan(0.25)
+    expect(share).toBeLessThan(0.45)
+  })
+})
+
+describe('pickNext - a stale persisted bagStarSource is dropped and reshuffled', () => {
+  it('drops a persisted bagStar whose bagStarSource no longer matches the live starred set', () => {
+    const starredIds = variations.slice(0, 3).map((v) => v.id) // >= 2, satisfies starEligible
+    localStorage.setItem(
+      STATE_KEY,
+      JSON.stringify({
+        bagA: [],
+        bagB: [],
+        bagStar: [starredIds[0]], // plausible but stale 1-element "remaining" pool
+        lastBanned: null,
+        bagASource: variations.filter((v) => v.priority === 1).map((v) => v.id),
+        bagBSource: variations.filter((v) => v.priority !== 1).map((v) => v.id),
+        bagStarSource: ['some-completely-different-stale-id'], // mismatched -> drop
+      }),
+    )
+
+    // Force useStarred === true every attempt (starEligible is true here,
+    // and 0.01 < STARRED_SHARE 0.3).
+    vi.spyOn(Math, 'random').mockReturnValue(0.01)
+
+    pickNext(variations, undefined, { starredIds })
+
+    const written = JSON.parse(localStorage.getItem(STATE_KEY))
+    // A correctly-dropped bag reshuffles all of starredIds and pops one,
+    // leaving starredIds.length - 1. A wrongly-reused stale pool
+    // (length 1) would leave 0.
+    expect(written.bagStar).toHaveLength(starredIds.length - 1)
+  })
+
+  it('falls back cleanly when upgrading a pre-star pickState blob (no bagStar/bagStarSource fields)', () => {
+    localStorage.setItem(
+      STATE_KEY,
+      JSON.stringify({
+        bagA: [],
+        bagB: [],
+        lastBanned: null,
+        bagASource: variations.filter((v) => v.priority === 1).map((v) => v.id),
+        bagBSource: variations.filter((v) => v.priority !== 1).map((v) => v.id),
+        // no bagStar / bagStarSource - this is what mixpatti.pickState
+        // looked like before starring existed.
+      }),
+    )
+    const starredIds = variations.slice(0, 2).map((v) => v.id)
+    expect(() => pickNext(variations, undefined, { starredIds })).not.toThrow()
   })
 })
 

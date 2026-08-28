@@ -64,6 +64,52 @@
   animation: cardBreathe 5s ease-in-out 500ms infinite;
 }
 
+/* Star/mute preference toggles for the currently-shown variation. Inset
+   INSIDE the card's own box (not hung off the edge like .result__banStamp
+   below) - deliberately, so they add nothing to .stage__card's auto-sized
+   grid row and can never touch --band-under/--chrome/--card-w. Anchored to
+   the bottom-left corner: the one corner nothing else claims
+   (.card__pip--tl is top-left, .card__pip--br is bottom-right, the ban
+   stamp claims top-right when it fires). */
+.result__prefs {
+  position: absolute;
+  z-index: 2; /* above the card face, below .result__revealOverlay (4)
+    and .result__banStamp (5) */
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  gap: 6px;
+}
+
+.result__prefBtn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(10, 3, 16, 0.55);
+  border: 1px solid var(--line);
+  font-size: 15px;
+  transition: background 140ms ease, transform 140ms ease, border-color 140ms ease;
+}
+
+.result__prefBtn:active {
+  transform: scale(0.9);
+}
+
+.result__prefBtn:disabled {
+  opacity: 0.35;
+}
+
+.result__prefBtn[aria-pressed='true'] {
+  border-color: var(--gold);
+}
+
+.result__prefBtn--mute[aria-pressed='true'] {
+  border-color: var(--red-ban);
+}
+
 @keyframes cardBreathe {
   0%,
   100% {

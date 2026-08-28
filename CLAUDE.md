@@ -79,6 +79,27 @@ net, not a substitute for a fast local loop.
 - `src/lib/` is small framework-free helper modules (random pick, sound
   synthesis, timing constants, summary-badge text) - keep logic here
   testable and out of components where practical.
+- **Starring and muting** are per-browser preferences on top of the base
+  `pick.js` randomizer: starred twists are drawn more often, muted twists
+  are never drawn (but stay fully readable in Browse/RulesSheet - muting
+  only removes a twist from the draw, never from the rulebook). Both live
+  in `useVariationPrefs.js`, persisted as separate id arrays under
+  `mixpatti.starredVariations`/`mixpatti.mutedVariations` (deliberately
+  not `mixpatti.muted` - that key and `useMuted.js` already mean *audio*
+  mute; the two concepts share an English word, not a key or a hook).
+  `pick.js`'s `pickNext()` takes an optional third argument,
+  `{ mutedIds, starredIds }`, and adds a third shuffle-bag (`bagStar`) on
+  top of the existing bagA/bagB split - see that file's own JSDoc for the
+  overlap hazard this introduces (a starred bag, unlike bagA/bagB, is not
+  disjoint from them) and how `drawFrom()` was hardened to close it. A
+  floor (`MIN_UNMUTED`, exported from `pick.js`) stops muting from ever
+  starving the draw to nothing - the UI greys out the mute control at
+  that exact number (`useVariationPrefs.js`'s `canToggleMute`), and
+  `pick.js` ignores the mute set outright as a backstop if that floor is
+  ever violated anyway (stale state, a smaller `variations.json`, etc.).
+  Result's controls live in the card's bottom-left corner (see the
+  `--band-under` note below for why not `.stage__under`); BrowseSheet's
+  live per-row plus an All/Starred/Muted filter above the list.
 - `src/data/variations.json` is the content: the 27 Teen Patti twists.
   Treat its schema as fixed unless the user asks to change it. When adding
   or removing entries, also check for two things that don't come from the
@@ -145,6 +166,14 @@ See the README's "Layout" section for the full file-by-file map.
     produce) on that one line. Widen the pills and they wrap into the
     buttons. To recheck this count after editing `variations.json`:
     `node -e "const d=require('./src/data/variations.json');console.log(d.filter(v=>v.tableCards>0&&v.joker!==null).length)"`.
+    Anything else that wants a home near the card without eating into this
+    one reserved line - the star/mute controls (`.result__prefs`), the
+    sideshow-ban stamp (`.result__banStamp`) - goes `position: absolute`
+    inside `.result__cardWrap` instead, contributing zero height to
+    `.stage__card`'s `auto` row. `.result__prefs` sits inset in the card's
+    bottom-left corner specifically because that's the one corner nothing
+    else claims (`.card__pip--tl` top-left, `.card__pip--br` bottom-right,
+    the ban stamp top-right when it fires).
   - Band 1 (`--band-top`, 88px) started out Home-only (`.home__head`,
     the wordmark/tagline). Result now also claims it, but only once a
     player roster exists - `.result__dealer` (the "X deals" line) is
