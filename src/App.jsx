@@ -39,6 +39,7 @@ const FADE = {
 export default function App() {
   const [stage, setStage] = useState('home')
   const [current, setCurrent] = useState(null)
+  const [sideshowBannedThisRound, setSideshowBannedThisRound] = useState(false)
   const [overlay, setOverlay] = useState(null) // null | 'rules' | 'house'
   const [muted, toggleMuted] = useMuted()
   const enterImmersive = useImmersive()
@@ -65,7 +66,12 @@ export default function App() {
     primeAudio()
     setOverlay(null)
     // Never the same twist twice in a row.
-    setCurrent(pickNext(variations, current?.id))
+    const { variation, sideshowBannedThisRound: banned } = pickNext(
+      variations,
+      current?.id,
+    )
+    setCurrent(variation)
+    setSideshowBannedThisRound(banned)
     setStage('mixing')
   }
 
@@ -120,6 +126,7 @@ export default function App() {
             <motion.div key="result" {...FADE}>
               <Result
                 variation={current}
+                sideshowBannedThisRound={sideshowBannedThisRound}
                 onMixAgain={startMix}
                 onShowRules={() => setOverlay('rules')}
               />

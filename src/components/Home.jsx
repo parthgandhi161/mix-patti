@@ -11,7 +11,7 @@ export function Home({ onMix }) {
     <div className="stage home">
       <header className="home__head">
         <h1 className="home__wordmark">Mix Patti</h1>
-        <p className="home__tagline">21 twists on Teen Patti</p>
+        <p className="home__tagline">27 twists on Teen Patti</p>
       </header>
 
       <div className="stage__card">

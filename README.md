@@ -63,7 +63,7 @@ src/
   App.jsx                     state machine: home → mixing → result, plus
                               the rules / house-rules overlays and the
                               header
-  data/variations.json        the 21 twists (schema untouched)
+  data/variations.json        the 27 twists (schema untouched)
   lib/
     pick.js                   random pick, never the same twist twice in a
                               row

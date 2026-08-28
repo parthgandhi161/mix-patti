@@ -2,134 +2,76 @@
   {
     "id": "teen-patti",
     "name": "Teen Patti",
-    "alsoKnownAs": [
-      "Classic",
-      "Regular",
-      "Flash"
-    ],
+    "alsoKnownAs": ["Classic", "Regular", "Flash"],
     "cardsPerPlayer": 3,
     "tableCards": 0,
     "joker": null,
-    "setup": [
-      "Deal 3 cards face down to each player"
-    ],
+    "setup": ["Deal 3 cards face down to each player"],
     "play": [
       "Standard rules. Players choose to play blind or seen",
       "Bet in turn. When only two players remain, either can call a show"
     ],
     "winner": "Best standard hand. Trail > Pure sequence > Sequence > Colour > Pair > High card",
-    "notes": "The baseline. Good default when nobody wants a twist."
+    "notes": "The baseline. Good default when nobody wants a twist.",
+    "priority": 1,
+    "sideshowBanned": false
   },
   {
     "id": "ak47",
     "name": "AK47",
-    "alsoKnownAs": [
-      "A-K-4-7"
-    ],
+    "alsoKnownAs": ["A-K-4-7"],
     "cardsPerPlayer": 3,
     "tableCards": 0,
     "joker": "Every Ace, King, 4 and 7 is a joker",
-    "setup": [
-      "Deal 3 cards face down to each player"
-    ],
+    "setup": ["Deal 3 cards face down to each player"],
     "play": [
       "Plays exactly like normal Teen Patti",
       "Any A, K, 4 or 7 in your hand counts as whatever card helps you most"
     ],
     "winner": "Best standard hand",
-    "notes": "16 jokers in the deck. Trails and pure sequences are common, hand values run high."
+    "notes": "16 jokers in the deck. Trails and pure sequences are common, hand values run high.",
+    "priority": 1,
+    "sideshowBanned": false
   },
   {
-    "id": "muflis",
-    "name": "Muflis",
-    "alsoKnownAs": [
-      "Lowball",
-      "Reverse"
-    ],
+    "id": "char-sau-bees",
+    "name": "Char Sau Bees",
+    "alsoKnownAs": ["420"],
     "cardsPerPlayer": 3,
     "tableCards": 0,
     "joker": null,
-    "setup": [
-      "Deal 3 cards face down to each player"
-    ],
+    "setup": ["Deal 3 cards face down to each player"],
     "play": [
-      "Normal play, but the entire ranking is flipped",
-      "High card beats pair, pair beats sequence, and a trail is the worst hand possible",
-      "Within the same category, lower cards win (2-3-5 beats 4-6-9)",
-      "Ace counts as the highest card, so it hurts you"
+      "Card values: Ace = 1, numbers at face value, J/Q/K = 0",
+      "Arrange your 3 cards in any order to form a 3 digit number"
     ],
-    "winner": "Worst standard hand wins",
-    "notes": "Messes with instincts hard. Agree upfront whether A-2-3 counts as a sequence."
-  },
-  {
-    "id": "best-of-four",
-    "name": "Best of Four",
-    "alsoKnownAs": [
-      "Discard One",
-      "4 Cards"
-    ],
-    "cardsPerPlayer": 4,
-    "tableCards": 0,
-    "joker": null,
-    "setup": [
-      "Deal 4 cards face down to each player",
-      "Everyone looks at their 4 cards and discards 1 face down"
-    ],
-    "play": [
-      "The remaining 3 cards are your hand",
-      "Normal Teen Patti play from there"
-    ],
-    "winner": "Best standard hand",
-    "notes": "Blind play is awkward here since you must look to discard. Usually everyone plays seen."
+    "winner": "Closest to 420 wins, over or under",
+    "notes": "Sister game to 999 but less obvious, since going past 420 is possible. More thinking, more arguing.",
+    "priority": 1,
+    "sideshowBanned": false
   },
   {
     "id": "chhota-joker",
     "name": "Chhota Joker",
-    "alsoKnownAs": [
-      "Lowest Card Wild",
-      "Rockets"
-    ],
+    "alsoKnownAs": ["Lowest Card Wild", "Rockets"],
     "cardsPerPlayer": 3,
     "tableCards": 0,
     "joker": "Each player's own lowest card is their personal joker",
-    "setup": [
-      "Deal 3 cards face down to each player"
-    ],
+    "setup": ["Deal 3 cards face down to each player"],
     "play": [
       "Look at your hand and find your lowest ranked card",
       "That card, and any other card of the same rank in your hand, becomes a joker for you only",
       "Every player has a different joker"
     ],
     "winner": "Best standard hand",
-    "notes": "If your lowest card is part of a pair, both become jokers, which usually means a trail."
+    "notes": "If your lowest card is part of a pair, both become jokers, which usually means a trail.",
+    "priority": 1,
+    "sideshowBanned": false
   },
   {
-    "id": "999",
-    "name": "999",
-    "alsoKnownAs": [
-      "Closest to 999"
-    ],
-    "cardsPerPlayer": 3,
-    "tableCards": 0,
-    "joker": null,
-    "setup": [
-      "Deal 3 cards face down to each player"
-    ],
-    "play": [
-      "Card values: Ace = 1, numbered cards = face value, J/Q/K = 0",
-      "Your 3 cards form a 3 digit number and you can arrange them in any order",
-      "Aim to get as close to 999 as possible"
-    ],
-    "winner": "The player whose number is closest to 999 wins",
-    "notes": "Some groups play 'closest to 999 or 111' so a terrible hand can also win. Decide before dealing."
-  },
-  {
-    "id": "joker-hunt",
-    "name": "Joker Hunt",
-    "alsoKnownAs": [
-      "Draw Joker",
-      "Turn Card Joker"
-    ],
+    "id": "khula-joker",
+    "name": "Khula Joker",
+    "alsoKnownAs": ["Joker Hunt", "Draw Joker", "Turn Card Joker"],
     "cardsPerPlayer": 3,
     "tableCards": 1,
     "joker": "Whatever rank the face-up card is",
@@ -142,136 +84,73 @@
       "Normal play from there"
     ],
     "winner": "Best standard hand",
-    "notes": "The shared joker means everyone is on the same footing, unlike Chhota Joker."
-  },
-  {
-    "id": "sarphanchi",
-    "name": "Sarphanchi",
-    "alsoKnownAs": [
-      "Cobra",
-      "Blind Man's Card",
-      "Matha"
-    ],
-    "cardsPerPlayer": 1,
-    "tableCards": 0,
-    "joker": null,
-    "setup": [
-      "Deal 1 card to each player",
-      "Without looking at it, hold it face out against your forehead"
-    ],
-    "play": [
-      "You can see everyone else's card but not your own",
-      "Bet based on what you see around the table"
-    ],
-    "winner": "Highest single card wins. Ace high",
-    "notes": "Chaotic and loud, which is the point. Ends in seconds."
-  },
-  {
-    "id": "jodi-bijodi",
-    "name": "Jodi Bijodi",
-    "alsoKnownAs": [
-      "Odd Even"
-    ],
-    "cardsPerPlayer": 3,
-    "tableCards": 0,
-    "joker": null,
-    "setup": [
-      "Before dealing, the dealer declares 'odd' or 'even' for the round",
-      "Deal 3 cards to each player"
-    ],
-    "play": [
-      "If odd is declared, only odd cards (A, 3, 5, 7, 9, J, K) count toward your hand",
-      "If even, only even cards (2, 4, 6, 8, 10, Q) count"
-    ],
-    "winner": "Best hand made from your qualifying cards. Zero qualifying cards means you are out for the round",
-    "notes": "Agree upfront where Ace sits. Most groups call it odd."
-  },
-  {
-    "id": "do-raja",
-    "name": "Do Raja",
-    "alsoKnownAs": [
-      "High Low",
-      "Split"
-    ],
-    "cardsPerPlayer": 3,
-    "tableCards": 0,
-    "joker": null,
-    "setup": [
-      "Deal 3 cards face down to each player"
-    ],
-    "play": [
-      "Normal Teen Patti play, but there are two winners at the end"
-    ],
-    "winner": "The best hand and the worst hand both win. Muflis ranking decides the worst",
-    "notes": "Keeps people in longer since a garbage hand is still live. Works well with a large table."
-  },
-  {
-    "id": "gol-chakkar",
-    "name": "Gol Chakkar",
-    "alsoKnownAs": [
-      "Pass the Trash"
-    ],
-    "cardsPerPlayer": 4,
-    "tableCards": 0,
-    "joker": null,
-    "setup": [
-      "Deal 4 cards to each player"
-    ],
-    "play": [
-      "Everyone looks at their 4 cards and picks 1 from their own hand",
-      "Pass it face down to the player on your left. All passes happen at the same time, so you pass before seeing what comes to you",
-      "You now hold 5 cards. Discard 1 face down to make your final 3 card hand",
-      "Nobody touches the deck after the deal"
-    ],
-    "winner": "Best standard hand",
-    "notes": "Dealer calls the pass direction (left or right) before the pass happens."
-  },
-  {
-    "id": "char-sau-bees",
-    "name": "Char Sau Bees",
-    "alsoKnownAs": [
-      "420"
-    ],
-    "cardsPerPlayer": 3,
-    "tableCards": 0,
-    "joker": null,
-    "setup": [
-      "Deal 3 cards face down to each player"
-    ],
-    "play": [
-      "Card values: Ace = 1, numbers at face value, J/Q/K = 0",
-      "Arrange your 3 cards in any order to form a 3 digit number"
-    ],
-    "winner": "Closest to 420 wins, over or under",
-    "notes": "Sister game to 999 but less obvious, since going past 420 is possible. More thinking, more arguing."
+    "notes": "The shared joker means everyone is on the same footing, unlike Chhota Joker.",
+    "priority": 1,
+    "sideshowBanned": false
   },
   {
     "id": "padosi",
     "name": "Padosi",
-    "alsoKnownAs": [
-      "Neighbour Joker"
-    ],
+    "alsoKnownAs": ["Neighbour Joker"],
     "cardsPerPlayer": 3,
     "tableCards": 1,
     "joker": "The flipped rank plus the rank directly above and below it",
-    "setup": [
-      "Deal 3 cards to each player",
-      "Flip one card face up"
-    ],
+    "setup": ["Deal 3 cards to each player", "Flip one card face up"],
     "play": [
       "If a 7 is flipped, all 6s, 7s and 8s are jokers. 12 jokers total",
       "Ace wraps around, so an Ace flip makes K, A and 2 wild"
     ],
     "winner": "Best standard hand",
-    "notes": "The near-misses are the fun part. People realise their card was one rank off."
+    "notes": "The near-misses are the fun part. People realise their card was one rank off.",
+    "priority": 1,
+    "sideshowBanned": false
+  },
+  {
+    "id": "muflis",
+    "name": "Muflis",
+    "alsoKnownAs": ["Lowball", "Reverse"],
+    "cardsPerPlayer": 3,
+    "tableCards": 0,
+    "joker": null,
+    "setup": ["Deal 3 cards face down to each player"],
+    "play": [
+      "Normal play, but the entire ranking is flipped",
+      "High card beats pair, pair beats sequence, and a trail is the worst hand possible",
+      "Within the same category, lower cards win (2-3-5 beats 4-6-9)",
+      "Ace counts as the highest card, so it hurts you"
+    ],
+    "winner": "Worst standard hand wins",
+    "notes": "Messes with instincts hard. Agree upfront whether A-2-3 counts as a sequence.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "gol-chakkar",
+    "name": "Gol Chakkar",
+    "alsoKnownAs": ["Pass the Trash"],
+    "cardsPerPlayer": 3,
+    "tableCards": 0,
+    "joker": null,
+    "setup": [
+      "Deal 3 cards face down to each player",
+      "Dealer calls a pass direction, left or right, before anyone passes"
+    ],
+    "play": [
+      "Everyone looks at their 3 cards and picks 1 to pass in the called direction",
+      "All passes happen at the same time, so you pass before seeing what's coming to you",
+      "At the same moment, you receive 1 card from the player on your other side (if everyone passes left, you receive from the player on your right)",
+      "Your hand stays at 3 cards, no discard needed",
+      "Nobody touches the deck after the deal"
+    ],
+    "winner": "Best standard hand",
+    "notes": "No blind here, you have to look at your hand to know what to pass, so everyone plays seen. With 6 players, what you send is genuinely gone until it comes all the way back around.",
+    "priority": 2,
+    "sideshowBanned": true
   },
   {
     "id": "tukka",
     "name": "Tukka",
-    "alsoKnownAs": [
-      "Guess Joker",
-      "Call Your Card"
-    ],
+    "alsoKnownAs": ["Guess Joker", "Call Your Card"],
     "cardsPerPlayer": 3,
     "tableCards": 0,
     "joker": "Each player's own called rank, personal to them",
@@ -284,33 +163,14 @@
       "Everyone has a different one and everyone knows everyone else's"
     ],
     "winner": "Best standard hand",
-    "notes": "You commit blind, so it is genuinely 50-50 whether it helps. Table reads get loud."
-  },
-  {
-    "id": "jodi-joker",
-    "name": "Jodi Joker",
-    "alsoKnownAs": [
-      "Pair Power"
-    ],
-    "cardsPerPlayer": 3,
-    "tableCards": 0,
-    "joker": "Conditional, based on your own hand shape",
-    "setup": [
-      "Deal 3 cards face down to each player"
-    ],
-    "play": [
-      "If your hand contains a natural pair, your third card automatically becomes a joker",
-      "If you have no pair, you get no joker at all"
-    ],
-    "winner": "Best standard hand",
-    "notes": "Every pair silently upgrades to a trail. Half the table thinks they are unbeatable, then four trails hit the show at once."
+    "notes": "You commit blind, so it is genuinely 50-50 whether it helps. Table reads get loud.",
+    "priority": 2,
+    "sideshowBanned": false
   },
   {
     "id": "badalta-joker",
     "name": "Badalta Joker",
-    "alsoKnownAs": [
-      "Shifting Joker"
-    ],
+    "alsoKnownAs": ["Shifting Joker"],
     "cardsPerPlayer": 3,
     "tableCards": 3,
     "joker": "Changes every betting round",
@@ -324,36 +184,31 @@
       "Cap it at three flips total"
     ],
     "winner": "Best standard hand using whatever the final joker is",
-    "notes": "Your hand goes from garbage to trail to garbage across three flips. Keep the cap or the round drags."
+    "notes": "Your hand goes from garbage to trail to garbage across three flips. Keep the cap or the round drags.",
+    "priority": 2,
+    "sideshowBanned": false
   },
   {
     "id": "laal-kaali",
     "name": "Laal Kaali",
-    "alsoKnownAs": [
-      "Colour Wild",
-      "Red Black"
-    ],
+    "alsoKnownAs": ["Colour Wild", "Red Black"],
     "cardsPerPlayer": 3,
     "tableCards": 1,
     "joker": "Every card of the flipped card's colour",
-    "setup": [
-      "Deal 3 cards to each player",
-      "Flip one card face up"
-    ],
+    "setup": ["Deal 3 cards to each player", "Flip one card face up"],
     "play": [
       "If the flip is red, all 26 red cards are jokers",
       "If black, all 26 black cards. Half the deck goes wild"
     ],
     "winner": "Best standard hand",
-    "notes": "Almost everyone lands a trail. Peak chaos. The natural-beats-joker tiebreak matters most here."
+    "notes": "Almost everyone lands a trail. Peak chaos. The natural-beats-joker tiebreak matters most here.",
+    "priority": 2,
+    "sideshowBanned": false
   },
   {
     "id": "beat-the-bitch",
     "name": "Beat the B*tch",
-    "alsoKnownAs": [
-      "Beat the Bitch",
-      "Side Hand"
-    ],
+    "alsoKnownAs": ["Beat the Bitch", "Side Hand"],
     "cardsPerPlayer": 3,
     "tableCards": 3,
     "joker": null,
@@ -367,36 +222,14 @@
       "The round winner must beat the side hand with their own hand"
     ],
     "winner": "The round winner takes the pot only if their hand beats the side hand. If the side hand wins or ties, nobody takes the pot and it rolls over into the next round",
-    "notes": "Pot can roll over several rounds and get big. Decide upfront whether a tie counts as a loss (recommended: yes)."
-  },
-  {
-    "id": "sabka-hissa",
-    "name": "Sabka Hissa",
-    "alsoKnownAs": [
-      "Baantu Sabko",
-      "Everyone's Share"
-    ],
-    "cardsPerPlayer": 3,
-    "tableCards": 1,
-    "joker": null,
-    "setup": [
-      "Deal 3 cards face down to each player",
-      "Flip 1 card face up in the middle before betting starts"
-    ],
-    "play": [
-      "The flipped card belongs to every player at the table",
-      "At showdown, each player plays their best 3 out of their own 3 cards plus the shared card"
-    ],
-    "winner": "Best standard hand using your best 3 of 4 cards",
-    "notes": "The one variation where the dealer's flip helps the whole table instead of picking a winner or a victim."
+    "notes": "Pot can roll over several rounds and get big. Decide upfront whether a tie counts as a loss (recommended: yes).",
+    "priority": 2,
+    "sideshowBanned": false
   },
   {
     "id": "bhoot-wale-patte",
     "name": "Bhoot Wale Patte",
-    "alsoKnownAs": [
-      "The Haunted Cards",
-      "Shraap Aayega"
-    ],
+    "alsoKnownAs": ["The Haunted Cards", "Shraap Aayega"],
     "cardsPerPlayer": 3,
     "tableCards": 2,
     "joker": null,
@@ -410,15 +243,14 @@
       "Either finalist holding a cursed rank is disqualified instantly, regardless of hand strength"
     ],
     "winner": "The clean finalist wins automatically if the other is cursed. If both are clean, best standard hand wins. If both are cursed, the pot rolls into the next hand",
-    "notes": "A trail of Aces can still lose if Aces turn out to be cursed. The best hand in the room can lose without a single comparison."
+    "notes": "A trail of Aces can still lose if Aces turn out to be cursed. The best hand in the room can lose without a single comparison.",
+    "priority": 2,
+    "sideshowBanned": false
   },
   {
     "id": "kismat-ka-jugad",
     "name": "Kismat Ka Jugad",
-    "alsoKnownAs": [
-      "Wanna Get Rich?",
-      "Double Ya Dooba"
-    ],
+    "alsoKnownAs": ["Wanna Get Rich?", "Double Ya Dooba"],
     "cardsPerPlayer": 3,
     "tableCards": 0,
     "joker": null,
@@ -434,6 +266,261 @@
       "Normal betting continues between swaps"
     ],
     "winner": "Best standard hand",
-    "notes": "Paying double to sit in, then double again to fix your hand, is either smart play or a trap. Usually a trap."
+    "notes": "Paying double to sit in, then double again to fix your hand, is either smart play or a trap. Usually a trap.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "ek-aankh-khuli",
+    "name": "Ek Aankh Khuli",
+    "alsoKnownAs": ["One Eye Open"],
+    "cardsPerPlayer": 3,
+    "tableCards": 0,
+    "joker": null,
+    "setup": [
+      "Deal 3 cards to each player",
+      "The first card dealt to each player is placed face up in front of them, the other 2 stay face down"
+    ],
+    "play": [
+      "All 6 players have exactly 1 of their 3 cards exposed for everyone to see at all times",
+      "Betting and showdown play out normally from there"
+    ],
+    "winner": "Best standard hand",
+    "notes": "The only variation where you're reading the table instead of just your own hand. With 6 exposed cards out, a sharp player can rule out a lot before the first bet lands.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "boli-wale-joker",
+    "name": "Boli Wale Joker",
+    "alsoKnownAs": ["The Bidder's Joker"],
+    "cardsPerPlayer": 3,
+    "tableCards": 0,
+    "joker": "One rank called by the winning bidder, wild for everyone, plus a second personal joker only the bidder holds",
+    "setup": [
+      "Before dealing, the dealer opens an out-loud auction starting at the usual boot",
+      "Players call out higher amounts until nobody raises further, the winning bidder pays that amount into the pot",
+      "The winning bidder calls a rank out loud before seeing any cards. That rank is wild for the whole table",
+      "Deal 3 cards to each player"
+    ],
+    "play": [
+      "The winning bidder looks at their own hand and secretly picks 1 of their own 3 cards as a personal joker known only to them",
+      "Play a normal round otherwise, all disputes go to a full show"
+    ],
+    "winner": "Best standard hand. The bidder reveals their secret joker only if they reach the final show",
+    "notes": "If nobody raises past the opening amount, whoever opened the bidding takes it at that price. The public joker is a blind gamble, the private one is a guaranteed edge, which is why the auction gets loud.",
+    "priority": 2,
+    "sideshowBanned": true
+  },
+  {
+    "id": "fast-fatka",
+    "name": "Fast Fatka",
+    "alsoKnownAs": ["Quick Snap", "Speed Round"],
+    "cardsPerPlayer": 3,
+    "tableCards": 0,
+    "joker": null,
+    "setup": ["Deal 3 cards face down to each player"],
+    "play": [
+      "Normal play, but every betting decision has a hard count, someone counts to 5 out loud once it's your turn",
+      "No chaal, raise, or fold called by the count means you're automatically folded"
+    ],
+    "winner": "Best standard hand",
+    "notes": "One slow player kills the pace for a 6-player table. Use it occasionally, not every hand, or people burn out.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "nikal-fenk",
+    "name": "Nikal Fenk",
+    "alsoKnownAs": ["Best of Four", "Discard One", "4 Cards"],
+    "cardsPerPlayer": 4,
+    "tableCards": 0,
+    "joker": null,
+    "setup": [
+      "Deal 4 cards face down to each player",
+      "Everyone looks at their 4 cards and discards 1 face down"
+    ],
+    "play": [
+      "The remaining 3 cards are your hand",
+      "Normal Teen Patti play from there"
+    ],
+    "winner": "Best standard hand",
+    "notes": "Blind play is awkward here since you must look to discard. Usually everyone plays seen.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "jodi-bijodi",
+    "name": "Jodi Bijodi",
+    "alsoKnownAs": ["Odd Even"],
+    "cardsPerPlayer": 3,
+    "tableCards": 0,
+    "joker": null,
+    "setup": [
+      "Before dealing, the dealer declares 'odd' or 'even' for the round",
+      "Deal 3 cards to each player"
+    ],
+    "play": [
+      "If odd is declared, only odd cards (A, 3, 5, 7, 9, J, K) count toward your hand",
+      "If even, only even cards (2, 4, 6, 8, 10, Q) count"
+    ],
+    "winner": "Best hand made from your qualifying cards. Zero qualifying cards means you are out for the round",
+    "notes": "Agree upfront where Ace sits. Most groups call it odd.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "do-raja",
+    "name": "Do Raja",
+    "alsoKnownAs": ["High Low", "Split"],
+    "cardsPerPlayer": 3,
+    "tableCards": 0,
+    "joker": null,
+    "setup": ["Deal 3 cards face down to each player"],
+    "play": ["Normal Teen Patti play, but there are two winners at the end"],
+    "winner": "The best hand and the worst hand both win. Muflis ranking decides the worst",
+    "notes": "Keeps people in longer since a garbage hand is still live. Works well with a large table.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "jodi-joker",
+    "name": "Jodi Joker",
+    "alsoKnownAs": ["Pair Power"],
+    "cardsPerPlayer": 3,
+    "tableCards": 0,
+    "joker": "Conditional, based on your own hand shape",
+    "setup": ["Deal 3 cards face down to each player"],
+    "play": [
+      "If your hand contains a natural pair, your third card automatically becomes a joker",
+      "If you have no pair, you get no joker at all"
+    ],
+    "winner": "Best standard hand",
+    "notes": "Every pair silently upgrades to a trail. Half the table thinks they are unbeatable, then four trails hit the show at once.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "sabka-hissa",
+    "name": "Sabka Hissa",
+    "alsoKnownAs": ["Baantu Sabko", "Everyone's Share"],
+    "cardsPerPlayer": 3,
+    "tableCards": 1,
+    "joker": null,
+    "setup": [
+      "Deal 3 cards face down to each player",
+      "Flip 1 card face up in the middle before betting starts"
+    ],
+    "play": [
+      "The flipped card belongs to every player at the table",
+      "At showdown, each player plays their best 3 out of their own 3 cards plus the shared card"
+    ],
+    "winner": "Best standard hand using your best 3 of 4 cards",
+    "notes": "The one variation where the dealer's flip helps the whole table instead of picking a winner or a victim.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "999",
+    "name": "999",
+    "alsoKnownAs": ["Closest to 999"],
+    "cardsPerPlayer": 3,
+    "tableCards": 0,
+    "joker": null,
+    "setup": ["Deal 3 cards face down to each player"],
+    "play": [
+      "Card values: Ace = 1, numbered cards = face value, J/Q/K = 0",
+      "Your 3 cards form a 3 digit number and you can arrange them in any order",
+      "Aim to get as close to 999 as possible"
+    ],
+    "winner": "The player whose number is closest to 999 wins",
+    "notes": "Some groups play 'closest to 999 or 111' so a terrible hand can also win. Decide before dealing.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "murda-patta",
+    "name": "Murda Patta",
+    "alsoKnownAs": ["Dead Card"],
+    "cardsPerPlayer": 3,
+    "tableCards": 1,
+    "joker": null,
+    "setup": [
+      "Deal 3 cards to each player",
+      "Flip 1 card face up before betting starts"
+    ],
+    "play": [
+      "That rank goes dead instead of wild, all four cards of that rank contribute nothing",
+      "A dead card can't be used to form a pair, sequence, or trail, it's just a blank slot",
+      "Normal betting and showdown from there using whatever is still live in your hand"
+    ],
+    "winner": "Best standard hand using only your live cards",
+    "notes": "The mirror image of Khula Joker. Instead of hoping you hold the flipped rank, you're praying you don't, since a pair of Kings turns into nothing if Kings just got declared dead.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "parda-faash",
+    "name": "Parda Faash",
+    "alsoKnownAs": ["The Big Reveal", "Thoda Thoda Karke"],
+    "cardsPerPlayer": 3,
+    "tableCards": 0,
+    "joker": null,
+    "setup": [
+      "Deal 3 cards face down to each player",
+      "Play a fully normal round down to the final two players"
+    ],
+    "play": [
+      "Both finalists flip 1 of their 3 cards face up at the same time, then a betting round happens",
+      "Both flip a 2nd card, another betting round",
+      "The 3rd and final card is flipped together for the actual result"
+    ],
+    "winner": "Best standard hand",
+    "notes": "Every other variation changes the hand itself. This one leaves the cards alone and stretches out the ending instead, so the finalists bet on a slowly unfolding picture instead of one blind flip.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "haath-ka-kachra",
+    "name": "Haath Ka Kachra",
+    "alsoKnownAs": ["Trash in Hand", "Leftover Joker", "Draft and Discard", "Chain Joker"],
+    "cardsPerPlayer": 3,
+    "tableCards": 3,
+    "joker": "Three ranks, drawn from the deck after the draft cascade. All four cards of each rank are wild for everyone.",
+    "setup": [
+      "Deal 3 cards face down to each player",
+      "Deal the dealer 3 additional cards face down"
+    ],
+    "play": [
+      "The dealer looks at all 6 cards (their 3 plus the extra 3), keeps their best 3, and passes the other 3 face down to the next player",
+      "That player adds the received 3 to their own 3, looks at all 6, keeps their best 3, and passes their unwanted 3 onward",
+      "This repeats around the table in turn order until the last player has drafted",
+      "The last player's unwanted 3 cards go back into the deck instead of passing on",
+      "Shuffle the deck, then draw 3 cards. All four cards of each of those 3 ranks are wild for the whole table",
+      "Everyone plays seen from the start, since drafting forces a look. Normal betting proceeds once jokers are revealed"
+    ],
+    "winner": "Best standard hand using the 3 joker ranks as wild",
+    "notes": "Up to 12 cards can be wild at once, so hands run big. What you reject early can end up deciding everyone's hand once it hits the joker draw.",
+    "priority": 2,
+    "sideshowBanned": true
+  },
+  {
+    "id": "ek-se-badhkar-ek",
+    "name": "Ek Se Badhkar Ek",
+    "alsoKnownAs": ["Build Up Your Game", "One Better Than the Last"],
+    "cardsPerPlayer": 5,
+    "tableCards": 0,
+    "joker": null,
+    "setup": ["Deal 5 cards face down to each player"],
+    "play": [
+      "Round 1: every player flips their first card face up at the same time, each paying 1 counter into the pot",
+      "From round 2 onward, every player still holding cards decides at the same time: flip your next card (pay 1 more counter, chasing the lead) or hold (stop revealing for the rest of the hand, your current best card stays locked in and still counts at the end)",
+      "Repeat for up to 5 rounds, or until everyone has either run out of cards or chosen to hold",
+      "Whoever holds the single highest card among everyone's revealed cards wins the pot"
+    ],
+    "winner": "Highest single card revealed, among players who stayed in. Exact ties (same rank) split the pot evenly",
+    "notes": "Simulated at 6 players: every seat wins almost exactly 1 in 6 times, genuinely seat-blind, since everyone reveals together instead of taking turns against a moving target. Average pot lands around 13 counters. About 1 in 7 rounds ends in a tie for the top card. The real decision each round is whether to keep paying to chase the lead or lock in what you've got, that's where the skill lives now, not turn order luck.",
+    "priority": 2,
+    "sideshowBanned": true
   }
 ]
