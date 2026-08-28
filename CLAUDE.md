@@ -18,8 +18,14 @@ client-side static React, deployed as a static site to GitHub Pages.
   gate exists yet - Playwright is a `devDependency`, but only for one-off
   visual verification during development (see README's "Visual checks
   with Playwright"), nothing runs it automatically.
-- Fonts are loaded via a Google Fonts `<link>` in `index.html`, not
-  self-hosted or npm-installed.
+- Fonts (Baloo Bhaijaan 2, Baloo 2) are self-hosted as woff2 in
+  `public/fonts/`, declared via `@font-face` in `src/styles/global.css` -
+  not loaded from Google Fonts at runtime.
+- `vite-plugin-pwa` generates the service worker at build time
+  (`registerType: 'autoUpdate'`, no update toast, no forced reload) and
+  precaches the whole app shell - JS/CSS bundle, `index.html`, the
+  self-hosted fonts, and the icons - so an installed or offline load
+  renders identically to online.
 
 ## Commands
 

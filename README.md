@@ -75,6 +75,9 @@ await browser.close()
 ## Layout
 
 ```
+public/
+  fonts/                       self-hosted Baloo Bhaijaan 2 / Baloo 2
+                                woff2s, latin + latin-ext subsets only
 src/
   App.jsx                     state machine: home → mixing → result, plus
                               the rules / house-rules overlays and the
