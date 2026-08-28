@@ -17,6 +17,7 @@ import { usePlayers } from './lib/usePlayers'
 import { useVariationPrefs } from './lib/useVariationPrefs'
 import { pickNext } from './lib/pick'
 import { primeAudio } from './lib/sound'
+import { setReloadSafe } from './lib/pwaUpdate'
 
 const FADE = {
   initial: { opacity: 0 },
@@ -83,6 +84,13 @@ export default function App() {
     document.body.classList.toggle('is-mixing', stage === 'mixing')
     return () => document.body.classList.remove('is-mixing')
   }, [stage])
+
+  // Tells pwaUpdate.js when it's safe to silently reload for a pending
+  // app update - only the idle Home stage with no sheet open, so a
+  // reload can never land mid-mix or drop an open sheet.
+  useEffect(() => {
+    setReloadSafe(stage === 'home' && overlay === null)
+  }, [stage, overlay])
 
   // Excludes muted twists from the carousel's decorative spin too, not
   // just the actual draw (pick.js) - a group that muted a twist because

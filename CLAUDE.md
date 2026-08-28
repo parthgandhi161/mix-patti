@@ -24,10 +24,20 @@ client-side static React, deployed as a static site to GitHub Pages.
   `public/fonts/`, declared via `@font-face` in `src/styles/global.css` -
   not loaded from Google Fonts at runtime.
 - `vite-plugin-pwa` generates the service worker at build time
-  (`registerType: 'autoUpdate'`, no update toast, no forced reload) and
-  precaches the whole app shell - JS/CSS bundle, `index.html`, the
-  self-hosted fonts, and the icons - so an installed or offline load
-  renders identically to online.
+  (`registerType: 'autoUpdate'`) and precaches the whole app shell -
+  JS/CSS bundle, `index.html`, the self-hosted fonts, and the icons - so
+  an installed or offline load renders identically to online. Because the
+  whole shell is precached, installing a new version is a real background
+  download that doesn't always finish inside one short session - so
+  registration isn't the plugin's auto-injected script but a manual
+  `virtual:pwa-register` call in `src/lib/pwaUpdate.js` (`injectRegister:
+  false` in `vite.config.js`), which checks for updates proactively (on
+  a timer and on every `visibilitychange`, not only on a fresh
+  navigation - an installed PWA resuming from the background fires
+  neither) and reloads once a new worker activates, but *only* when
+  `App.jsx`'s `setReloadSafe` says it's safe - idle Home stage, no sheet
+  open. Anywhere else (mid-mix, a sheet open) it never reloads; the
+  update just applies silently on the next natural reopen.
 
 ## Commands
 
