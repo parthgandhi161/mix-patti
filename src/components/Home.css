@@ -6,7 +6,7 @@
 
 .home__head {
   grid-row: 1;
-  align-self: center;
+  align-self: flex-start;
 }
 
 .home__wordmark {
@@ -22,7 +22,7 @@
 }
 
 .home__tagline {
-  margin-top: 6px;
+  margin-top: 2px;
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.06em;
