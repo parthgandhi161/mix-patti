@@ -257,7 +257,14 @@ export default function App() {
 
       <AnimatePresence>
         {booting && (
-          <motion.div key="boot" {...FADE}>
+          // initial={false}: Boot is the very first thing that ever
+          // mounts, so it must already be fully opaque on the first
+          // paint - Header/Credit render underneath it with no fade of
+          // their own, so FADE's normal opacity:0 entrance would leave a
+          // ~220ms window where they show through a still-transparent
+          // Boot. The exit fade (unchanged) still crossfades into Home
+          // once booting flips false.
+          <motion.div key="boot" {...FADE} initial={false}>
             <Boot onReady={handleBootReady} />
           </motion.div>
         )}
