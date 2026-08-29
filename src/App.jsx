@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import variations from './data/variations.json'
 import { Home } from './components/Home'
@@ -11,6 +11,7 @@ import { PlayersSheet } from './components/PlayersSheet'
 import { FloatingSuits } from './components/FloatingSuits'
 import { Header } from './components/Header'
 import { Credit } from './components/Brand'
+import { Boot } from './components/Boot'
 import { useMuted } from './lib/useMuted'
 import { useImmersive } from './lib/immersive'
 import { usePlayers } from './lib/usePlayers'
@@ -38,6 +39,11 @@ const FADE = {
  *   any stage --📖 header------>  overlay: 'browse'  --close-->  result
  *   result --dealer line / + Add players-->  overlay: 'players'  --close-->  result
  *
+ * A one-time Boot gate, driven by its own `booting` flag below, covers
+ * this whole diagram's initial state until the launch-time update check
+ * (pwaUpdate.js's checkOnBoot()) settles - it isn't part of the machine
+ * above since it's not user-triggered and shares no card with it.
+ *
  * Inside 'browse', picking a row sets browseTarget (a variation) and
  * layers RulesSheet on top of the list; that sheet's own close clears
  * only browseTarget, landing back on the list instead of falling all
@@ -49,6 +55,8 @@ const FADE = {
  * single continuous card rather than three separate screens.
  */
 export default function App() {
+  const [booting, setBooting] = useState(true)
+  const handleBootReady = useCallback(() => setBooting(false), [])
   const [stage, setStage] = useState('home')
   const [current, setCurrent] = useState(null)
   const [sideshowBannedThisRound, setSideshowBannedThisRound] = useState(false)
@@ -244,6 +252,14 @@ export default function App() {
             onClear={clearPlayers}
             onClose={() => setOverlay(null)}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {booting && (
+          <motion.div key="boot" {...FADE}>
+            <Boot onReady={handleBootReady} />
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

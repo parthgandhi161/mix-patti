@@ -1,0 +1,64 @@
+/* One-time launch splash, shown while checkOnBoot() (pwaUpdate.js) makes
+   its first update check. Full-bleed rather than living in .stage's
+   four-band grid - unlike Home/Mixing/Result it shares no card
+   continuity with the other stages, so it doesn't need that grid.
+   z-index above every sheet (30) since nothing else can be open yet
+   anyway, but this keeps stacking order correct by construction. */
+.boot {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: linear-gradient(180deg, var(--night-1), var(--night-0));
+  text-align: center;
+}
+
+.boot__card {
+  width: min(38vw, 148px);
+  animation: bootBreathe 2.6s ease-in-out infinite;
+}
+
+@keyframes bootBreathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.015);
+  }
+}
+
+.boot__wordmark {
+  font-family: var(--font-poster);
+  font-weight: 700;
+  font-size: clamp(30px, 10vw, 40px);
+  line-height: 1.1;
+  background: linear-gradient(180deg, #ffe9a8, var(--gold) 45%, var(--gold-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.boot__status {
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lav-dim);
+  animation: bootPulse 2.2s ease-in-out infinite;
+}
+
+@keyframes bootPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
