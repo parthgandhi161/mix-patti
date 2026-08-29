@@ -6,20 +6,24 @@ import { registerSW } from 'virtual:pwa-register'
 // the browser gets an early chance to finish installing an update before
 // the *next* close+reopen.
 const CHECK_INTERVAL_MS = 60 * 60 * 1000
-// Upper bound on how long Boot.jsx will wait before giving up and letting
-// the app open anyway. Covers two very different waits with one number: a
-// slow/offline first check (resolves in well under a second in practice),
-// and - if that check finds a new build - a bounded wait for the install
-// it kicks off to finish and activate. That second case is what actually
-// needs a budget this size: registration.update() resolving only means an
-// install *started*, not that it finished (a full precache re-download
-// "doesn't always finish inside one short session" - see CLAUDE.md), so if
-// Boot let go the instant the check was attempted, an update found right
-// at launch would install and reload *after* Home was already showing the
+// Safety net for the very first update check itself - a slow/offline
+// network, or (this actually happens on every single `npm run dev`
+// launch) vite-plugin-pwa's dev-mode registerSW, which is a total no-op
+// that never calls onRegisteredSW/onRegisterError/anything - so without
+// this, bootCheck below would simply never resolve in dev.
+const BOOT_CHECK_TIMEOUT_MS = 2500
+// Once that first check finds a new build already installing, how much
+// longer Boot.jsx will wait for it to finish and activate before giving
+// up anyway. registration.update() resolving only means an install
+// *started*, not that it finished (a full precache re-download "doesn't
+// always finish inside one short session" - see CLAUDE.md), so if Boot
+// let go the instant the check was attempted, an update found right at
+// launch would install and reload *after* Home was already showing the
 // old build - a stale-Home flash followed by a second splash, the exact
-// double-flash this budget exists to prevent. The longer wait only ever
-// happens in that one rare case (a fresh deploy's first cold launch).
-const BOOT_MAX_WAIT_MS = 6000
+// double-flash this budget exists to prevent. This longer wait only ever
+// applies in that one rare case (a fresh deploy's first cold launch) -
+// every other launch resolves via BOOT_CHECK_TIMEOUT_MS above instead.
+const BOOT_UPDATE_TIMEOUT_MS = 6000
 
 let reloadSafe = true
 
@@ -35,23 +39,18 @@ export function setReloadSafe(safe) {
 
 // Resolved once we know the outcome of the very first update check:
 // either there's nothing new, or the browser gave up registering a
-// service worker at all - Boot.jsx awaits this (bounded by
-// BOOT_MAX_WAIT_MS above, so a slow/offline network never traps the
-// splash). If the check instead finds a new build, this deliberately does
-// NOT resolve right away - see markUpdateInstalling below - so Boot keeps
-// covering the screen until either that install activates (onNeedReload
-// fires and reloads immediately, seamless because nothing else has been
-// shown yet) or the same budget gives up and reveals the current build.
+// service worker at all - Boot.jsx awaits this. Guarded by a self-
+// resetting timer (see giveUpTimer below) rather than a fixed race, so
+// the budget can grow once an update is actually confirmed installing
+// without also making the common "nothing new" case wait that long.
 let markBootCheckDone
 const bootCheck = new Promise((resolve) => {
   markBootCheckDone = resolve
 })
+let giveUpTimer = setTimeout(markBootCheckDone, BOOT_CHECK_TIMEOUT_MS)
 
 export function checkOnBoot() {
-  return Promise.race([
-    bootCheck,
-    new Promise((resolve) => setTimeout(resolve, BOOT_MAX_WAIT_MS)),
-  ])
+  return bootCheck
 }
 
 // Boot.jsx's only hook into "is an update actually installing right now" -
@@ -62,6 +61,11 @@ let updateInstalling = false
 let onUpdateInstalling = null
 function markUpdateInstalling() {
   updateInstalling = true
+  // Replace the short "did the check even happen" timer with the longer
+  // "wait for the install to finish" one now that there's actually
+  // something to wait for.
+  clearTimeout(giveUpTimer)
+  giveUpTimer = setTimeout(markBootCheckDone, BOOT_UPDATE_TIMEOUT_MS)
   onUpdateInstalling?.()
 }
 export function onBootUpdateFound(cb) {
@@ -87,6 +91,7 @@ function install() {
   registerSW({
     onRegisteredSW(swUrl, registration) {
       if (!registration) {
+        clearTimeout(giveUpTimer)
         markBootCheckDone()
         return
       }
@@ -105,11 +110,13 @@ function install() {
         if (registration.installing) {
           markUpdateInstalling()
         } else {
+          clearTimeout(giveUpTimer)
           markBootCheckDone()
         }
       })
     },
     onRegisterError() {
+      clearTimeout(giveUpTimer)
       markBootCheckDone()
     },
     onNeedReload() {
