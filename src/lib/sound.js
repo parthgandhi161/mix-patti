@@ -547,53 +547,65 @@ function scheduleStamp(g, at) {
 }
 
 /**
- * An ominous swell: a low sustained drone (pitch sinking slightly rather
- * than climbing - dread, not the brightening excitement a rising sweep
- * would read as) underneath a series of soft low drum() pulses whose gap
- * shrinks as `secs` elapses, like a heartbeat quickening. Deliberately
- * reuses drum()'s existing low-boom voice for the pulses rather than
- * riffle()'s noise-burst texture - riffle() is also what playShuffle()
- * uses for the deck-shuffling sound, which is exactly why the previous
- * version of this cue (built from 22 escalating riffle() bursts) read as
- * "shuffling cards" during a moment that has nothing to do with
- * shuffling. The sustained oscillator is the one genuinely new voice
- * here: drum/chime/ghungroo are all short hits or decays, none can hold
- * a tone for multiple seconds.
+ * A wailing siren: a sine oscillator swinging between two pitches every
+ * 0.55s, riding over a soft sustained 70Hz drone that keeps a foot in
+ * this file's existing low-register "dread" register (the same low tone
+ * the previous swell-based version of this cue was built from). Both
+ * keep swinging/holding right up until the final 0.5s of `secs`, then
+ * descend and fade together - clearing just before the stamp, so the
+ * two don't smear into one sound.
  */
-function scheduleSwell(g, at, secs) {
+function scheduleSiren(g, at, secs) {
+  const settleStart = secs - 0.5
+  const low = 420
+  const high = 720
+  const halfCycle = 0.55
+
   const osc = g.ctx.createOscillator()
   osc.type = 'sine'
-  osc.frequency.setValueAtTime(70, at)
-  osc.frequency.exponentialRampToValueAtTime(48, at + secs)
-
-  const lp = g.ctx.createBiquadFilter()
-  lp.type = 'lowpass'
-  lp.frequency.value = 220 // keep it a felt rumble, no bright edge
+  osc.frequency.setValueAtTime(low, at)
+  let t = 0
+  let goingHigh = true
+  while (true) {
+    const next = t + halfCycle
+    if (next >= settleStart) {
+      osc.frequency.linearRampToValueAtTime(goingHigh ? high : low, at + settleStart)
+      break
+    }
+    osc.frequency.linearRampToValueAtTime(goingHigh ? high : low, at + next)
+    t = next
+    goingHigh = !goingHigh
+  }
+  osc.frequency.exponentialRampToValueAtTime(220, at + secs)
 
   const gn = g.ctx.createGain()
-  gn.gain.setValueAtTime(0.0001, at)
-  gn.gain.exponentialRampToValueAtTime(0.22, at + secs * 0.85)
-  gn.gain.exponentialRampToValueAtTime(0.0001, at + secs) // clears just
-    // before the stamp, so the two don't smear into one sound
+  gn.gain.setValueAtTime(0, at)
+  gn.gain.linearRampToValueAtTime(0.4, at + 0.02)
+  gn.gain.setValueAtTime(0.4, at + settleStart)
+  gn.gain.exponentialRampToValueAtTime(0.0001, at + secs)
 
-  osc.connect(lp).connect(gn).connect(g.bus)
+  osc.connect(gn).connect(g.bus)
   osc.start(at)
   osc.stop(at + secs + 0.02)
   track(osc)
 
-  // Heartbeat pulses: soft low thumps, gap shrinking as `at + secs` nears.
-  let t = at + 0.15
-  let gap = secs * 0.42
-  const MIN_GAP = 0.16
-  while (t < at + secs - 0.1) {
-    drum(g, t, 'low', 0.18 + 0.22 * ((t - at) / secs))
-    gap = Math.max(MIN_GAP, gap * 0.82) // accelerates
-    t += gap
-  }
+  // Low anchor: a soft sustained drone under the wail, fading with it.
+  const drone = g.ctx.createOscillator()
+  drone.type = 'sine'
+  drone.frequency.value = 70
+  const dGn = g.ctx.createGain()
+  dGn.gain.setValueAtTime(0, at)
+  dGn.gain.linearRampToValueAtTime(0.12, at + 0.03)
+  dGn.gain.setValueAtTime(0.12, at + settleStart)
+  dGn.gain.exponentialRampToValueAtTime(0.0001, at + secs)
+  drone.connect(dGn).connect(g.bus)
+  drone.start(at)
+  drone.stop(at + secs + 0.02)
+  track(drone)
 }
 
 /**
- * Sideshow-banned "no entry" reveal: an ominous swell that builds for
+ * Sideshow-banned "no entry" reveal: a wailing siren that builds for
  * `ms` (Result.jsx owns this duration - see REVEAL_HOLD_MS there) and
  * resolves into the same stamp playBanStamp() plays standalone. One
  * synchronous cue(), like playShuffle(): every oscillator/drum/click is
@@ -605,7 +617,7 @@ function scheduleSwell(g, at, secs) {
 export function playBanRiser(ms) {
   cue((g, t0) => {
     const secs = ms / 1000
-    scheduleSwell(g, t0, secs)
+    scheduleSiren(g, t0, secs)
     scheduleStamp(g, t0 + secs)
   })
 }
