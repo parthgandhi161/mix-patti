@@ -8,6 +8,7 @@ import { RulesSheet } from './components/RulesSheet'
 import { HouseRulesSheet } from './components/HouseRulesSheet'
 import { BrowseSheet } from './components/BrowseSheet'
 import { PlayersSheet } from './components/PlayersSheet'
+import { HandJudgeSheet } from './components/HandJudgeSheet'
 import { FloatingSuits } from './components/FloatingSuits'
 import { Header } from './components/Header'
 import { Credit } from './components/Brand'
@@ -38,6 +39,7 @@ const FADE = {
  *   any stage --☰ header------>  overlay: 'house'  --close-->  result
  *   any stage --📖 header------>  overlay: 'browse'  --close-->  result
  *   result --dealer line / + Add players-->  overlay: 'players'  --close-->  result
+ *   result --Compare hands-->  overlay: 'judge'  --close-->  result
  *
  * A one-time Boot gate, driven by its own `booting` flag below, covers
  * this whole diagram's initial state until the launch-time update check
@@ -65,7 +67,7 @@ export default function App() {
   // it can share the same dim mechanism as stage === 'mixing' below
   // instead of Result inventing a second one.
   const [resultRevealDim, setResultRevealDim] = useState(false)
-  const [overlay, setOverlay] = useState(null) // null | 'rules' | 'house' | 'browse' | 'players'
+  const [overlay, setOverlay] = useState(null) // null | 'rules' | 'house' | 'browse' | 'players' | 'judge'
   const [browseTarget, setBrowseTarget] = useState(null)
   const [muted, toggleMuted] = useMuted()
   const enterImmersive = useImmersive()
@@ -209,6 +211,7 @@ export default function App() {
                 onToggleMute={() => toggleVariationMuted(current.id)}
                 canMuteThis={canToggleMute(current.id)}
                 onRevealDimChange={setResultRevealDim}
+                onOpenJudge={() => setOverlay('judge')}
               />
             </motion.div>
           )}
@@ -253,6 +256,7 @@ export default function App() {
             onClose={() => setOverlay(null)}
           />
         )}
+        {overlay === 'judge' && <HandJudgeSheet onClose={() => setOverlay(null)} />}
       </AnimatePresence>
 
       <AnimatePresence>

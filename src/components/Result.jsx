@@ -62,6 +62,7 @@ export function Result({
   onToggleMute,
   canMuteThis = true,
   onRevealDimChange = () => {},
+  onOpenJudge,
 }) {
   // Read once, so this can't flip mid-reveal - same reasoning as
   // Mixing.jsx's own [reduced] state.
@@ -236,6 +237,15 @@ export function Result({
           disabled={bigRevealActive}
         >
           Show rules
+        </button>
+
+        <button
+          type="button"
+          className="btn btn--outline result__judge"
+          onClick={onOpenJudge}
+          disabled={bigRevealActive}
+        >
+          Compare hands
         </button>
 
         <button

@@ -5,6 +5,25 @@
    is the only stage that also claims band 1 (--band-top, 88px), for the
    optional dealer line below. */
 
+/* Deliberately breaks from global.css's "one card size across all three
+   stages" rule, on explicit request: Result now has a 3rd footer button,
+   and no combination of tightening that footer's own spacing could
+   guarantee zero scrolling on every real device - the failure mode is
+   that --card-w is usually WIDTH-capped (min(74%, 264px) in global.css,
+   sized for Home/Mixing where there's no competing footer content), not
+   height-capped, so a taller footer doesn't actually shrink an
+   already-width-bound card at all; only --card-cap itself does that.
+   Result overrides it here, scoped to `.stage.result` (specificity 0,0,2
+   beats .stage's own 0,0,1, so this wins regardless of file order)
+   rather than touching the shared value everyone else still uses. Real
+   consequence, not hidden: Result's card is now visibly a little
+   smaller than the card Mixing lands on, so the crossfade isn't
+   perfectly seamless anymore - accepted in exchange for Result never
+   scrolling on any device, not just the ones this was checked against. */
+.stage.result {
+  --card-cap: min(62%, 216px);
+}
+
 /* Band 1 - only Result uses it, and only once a roster exists (App.jsx
    threads dealerName/onOpenPlayers in; while the roster is empty this
    renders nothing at all - the entry point lives in the header instead,
@@ -311,18 +330,41 @@
   border-color: rgba(244, 198, 74, 0.4);
 }
 
+/* Three stacked buttons now, not two. Scoped override of the shared
+   .stage__foot (global.css) rather than editing that rule directly -
+   Home also uses .stage__foot for its single button and must keep its
+   own spacing. Real content height here (3 * 38px buttons + 2 * 8px
+   gaps + 32px bottom padding = 164px) is kept well under --band-bottom
+   (190px, global.css) on purpose: an earlier pass landed the two right
+   at each other (188 vs 190) and that 2px of "slack" turned out to be
+   real-font-rendering-dependent - it held in a headless Chromium check
+   but produced actual scrolling for the user on a real device. Result
+   is a fixed-height stage and must never scroll, so this leaves a real
+   margin, not a computed-to-the-pixel one. */
+.stage.result .stage__foot {
+  gap: 8px;
+  padding-bottom: 32px;
+}
+
 .result__rules {
   width: auto;
-  min-width: 150px;
+  min-width: 130px;
   margin-top: 2px;
-  font-size: 15px;
-  padding: 11px 20px;
-  min-height: 46px;
+  font-size: 13.5px;
+  padding: 8px 16px;
+  min-height: 38px;
+}
+
+.result__judge {
+  width: 100%;
+  font-size: 13.5px;
+  padding: 8px 16px;
+  min-height: 38px;
 }
 
 .result__mix {
   width: 100%;
-  font-size: 15px;
-  padding: 11px 20px;
-  min-height: 46px;
+  font-size: 13.5px;
+  padding: 8px 16px;
+  min-height: 38px;
 }

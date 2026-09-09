@@ -555,3 +555,357 @@
   flex-shrink: 0;
   margin-top: 4px;
 }
+
+/* --- Stage 8 (HandJudgeSheet) - hand entry, mode switch, verdict ----- */
+
+/* Overrides .sheet__body's default gap-based flow: Hand 1 pinned to the
+   top, Hand 2 to the bottom, whatever's in .handJudgeSheet__midZone
+   (the switch+Judge button, or the verdict) taking whatever's left in
+   between - the same "top/middle/bottom" rhythm on both the entry form
+   and the verdict, so swapping one for the other reads as the same
+   screen rather than a navigation. */
+.handJudgeSheet__body {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.handJudgeSheet__handBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.handJudgeSheet__handLabel {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lav);
+}
+
+.handJudgeSheet__crown {
+  margin-right: 2px;
+}
+
+.handJudgeSheet__handRow {
+  display: flex;
+  gap: 12px;
+  /* Room for .playingCard__tag's -9px overlap below each slot, plus a
+     touch more so the verdict's glow (below) isn't clipped either. */
+  padding: 6px;
+  margin: 2px 0;
+  border-radius: 18px;
+}
+
+/* inset, not outset - see .browseSheet__input:focus-visible's comment
+   above, same bug, same fix: .sheet__body's overflow-y: auto implicitly
+   makes its overflow-x non-visible too, and an outset glow's blur
+   reaches past .handRow's own box on the left/right, straight into that
+   invisible clip. An inset shadow draws inside the border box instead,
+   so it can never be clipped by an ancestor's overflow regardless of
+   blur radius. */
+.handJudgeSheet__handRow--win {
+  box-shadow: inset 0 0 0 2px var(--gold), inset 0 0 22px 3px rgba(244, 198, 74, 0.4);
+  animation: handJudgeGlow 1.8s ease-in-out infinite;
+}
+
+@keyframes handJudgeGlow {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 2px var(--gold), inset 0 0 14px 1px rgba(244, 198, 74, 0.28);
+  }
+  50% {
+    box-shadow: inset 0 0 0 2px var(--gold), inset 0 0 26px 5px rgba(244, 198, 74, 0.6);
+  }
+}
+
+.handJudgeSheet__convertedLabel {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--teal);
+  text-align: center;
+  margin: 4px 0;
+}
+
+.handJudgeSheet__convertedRow {
+  display: flex;
+  gap: 8px;
+  padding: 0 22px;
+}
+
+.handJudgeSheet__midZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.handJudgeSheet__switch {
+  display: flex;
+  background: var(--night-3);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.handJudgeSheet__switchOpt {
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--lav-dim);
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.handJudgeSheet__switchOpt--active {
+  background: var(--gold);
+  color: #2c1444;
+}
+
+.handJudgeSheet__judgeRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.handJudgeSheet__judgeLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--line);
+}
+
+.handJudgeSheet__judgeBtn {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--gold), var(--gold-deep));
+  color: #2a1206;
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 16px;
+  box-shadow: 0 10px 26px rgba(244, 198, 74, 0.3);
+  transition: transform 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+.handJudgeSheet__judgeBtn:active {
+  transform: scale(0.96);
+}
+
+.handJudgeSheet__judgeBtn:disabled {
+  background: var(--night-3);
+  color: var(--lav-dim);
+  box-shadow: none;
+}
+
+.handJudgeSheet__warning {
+  font-size: 12px;
+  color: var(--pink);
+  text-align: center;
+}
+
+.handJudgeSheet__winnerEyebrow {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lav-dim);
+}
+
+.handJudgeSheet__winner {
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 24px;
+  background: linear-gradient(90deg, var(--gold), var(--pink));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-top: -4px;
+}
+
+.handJudgeSheet__midButtons {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.handJudgeSheet__midBtn {
+  flex: 1;
+  width: auto;
+  min-height: 46px;
+  padding: 12px 10px;
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+
+/* The bottom-drawer flow for filling one card: rank -> suit -> (always)
+   joker?, auto-advancing to the next empty slot. Positioned against
+   .sheet (already `position: absolute`), same as Result.css's own
+   overlay-over-a-positioned-ancestor pattern. */
+.handJudgeSheet__dim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: rgba(10, 3, 16, 0.55);
+}
+
+.handJudgeSheet__drawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  background: var(--night-1);
+  border-top: 1px solid var(--line);
+  border-radius: 24px 24px 0 0;
+  padding: 18px calc(20px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom))
+    calc(20px + env(safe-area-inset-left));
+  box-shadow: 0 -20px 40px rgba(0, 0, 0, 0.45);
+}
+
+.handJudgeSheet__drawerTitle {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--lav);
+  text-align: center;
+  margin-bottom: 14px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.handJudgeSheet__drawerSub {
+  text-align: center;
+  font-size: 14px;
+  color: var(--lav-dim);
+  margin: 0 0 16px;
+}
+
+.handJudgeSheet__drawerSub strong {
+  color: var(--ivory);
+}
+
+.handJudgeSheet__rankGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.handJudgeSheet__rankChip {
+  height: 52px;
+  border-radius: 12px;
+  background: var(--night-2);
+  border: 1px solid var(--line);
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ivory);
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.handJudgeSheet__rankChip--active {
+  background: var(--gold);
+  color: #2c1444;
+  border-color: var(--gold);
+}
+
+.handJudgeSheet__faceNote {
+  text-align: center;
+  font-size: 10px;
+  color: var(--lav-dim);
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+}
+
+/* J/Q/K/A break out of the numeric grid into their own centered row,
+   styled distinctly - they're the "special" cards, per the user's own
+   framing of this layout. */
+.handJudgeSheet__faceRow {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.handJudgeSheet__faceChip {
+  width: 66px;
+  height: 52px;
+  border-radius: 12px;
+  background: rgba(244, 198, 74, 0.12);
+  border: 1.5px solid rgba(244, 198, 74, 0.5);
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 18px;
+  color: #ffedb8;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.handJudgeSheet__faceChip--active {
+  background: var(--gold);
+  color: #2c1444;
+  border-color: var(--gold);
+}
+
+.handJudgeSheet__suitRow {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  padding: 6px 0 8px;
+}
+
+.handJudgeSheet__suitChip {
+  width: 74px;
+  height: 74px;
+  border-radius: 16px;
+  background: var(--night-2);
+  border: 1px solid var(--line);
+  font-size: 32px;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.handJudgeSheet__suitChip--black {
+  color: var(--ivory);
+}
+
+.handJudgeSheet__suitChip--red {
+  color: var(--pink);
+}
+
+.handJudgeSheet__suitChip--active {
+  border-color: var(--gold);
+  background: rgba(244, 198, 74, 0.12);
+}
+
+.handJudgeSheet__tagRow {
+  display: flex;
+  gap: 14px;
+}
+
+.handJudgeSheet__tagBtn {
+  flex: 1;
+  height: 60px;
+  border-radius: 16px;
+  background: var(--night-2);
+  border: 1.5px solid var(--line);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--lav);
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.handJudgeSheet__tagBtn:active {
+  transform: scale(0.97);
+}

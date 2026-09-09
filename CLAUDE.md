@@ -218,6 +218,18 @@ See the README's "Layout" section for the full file-by-file map.
     wordmark - centred in the middle track - stays exactly centred
     regardless of how many icons actually render on either side; don't
     widen only one side.
+  - **Result is the one deliberate exception to "one card size."** It
+    overrides `--card-cap` down to `min(62%, 216px)` (`Result.css`,
+    scoped to `.stage.result`), so its card is visibly a little smaller
+    than the card Mixing lands on - the crossfade isn't perfectly
+    seamless there anymore. Added when Result gained a 3rd footer
+    button (Hand Judge's "Compare hands") and tightening the footer's
+    own spacing alone couldn't guarantee zero scrolling on every real
+    device: `--card-w` is normally WIDTH-capped, not height-capped, so
+    a taller footer doesn't actually shrink an already-width-bound card
+    at all - only `--card-cap` itself does. Result must never scroll,
+    full stop, so this was accepted on purpose rather than chased
+    further with footer-only tweaks.
 - **No 3D in the mix.** The reveal is `translateX` + `scale` + `opacity`
   only. Mobile WebKit stops honouring `backface-visibility: hidden` once
   the rotating parent's transform is a JS-driven `matrix3d`, which ghosts

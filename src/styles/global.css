@@ -376,10 +376,16 @@ body.is-dim {
   --card-cap: min(74%, 264px);
   /* All measured from real content: Home's wordmark + tagline need 84px,
      one line of badge pills is 31 on top of its 14px gap to the card,
-     and Result's two stacked buttons need 140. */
+     and Result's three stacked buttons (Show rules / Compare hands /
+     Mix again - sized down in Result.css, with its own scoped
+     .stage__foot override, so a third button fits) need ~164px in
+     practice. Budgeted here at 190, deliberately not shaved to the
+     pixel - Result must never scroll, and a tight budget that "just
+     fits" in one browser has already produced real scrolling on a real
+     device once from nothing more than font-metric rounding. */
   --band-top: 88px;
   --band-under: 52px;
-  --band-bottom: 154px;
+  --band-bottom: 190px;
 
   /* Everything that isn't the card, single-sourced so it can't drift
      out of step with the rows above. */

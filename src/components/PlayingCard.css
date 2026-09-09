@@ -1,0 +1,81 @@
+.playingCard {
+  position: relative;
+  flex: 1;
+  aspect-ratio: 5 / 7;
+  border-radius: 14px;
+  background: var(--night-2);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+button.playingCard:active {
+  transform: scale(0.96);
+}
+
+.playingCard--active {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(244, 198, 74, 0.5);
+}
+
+.playingCard__plus {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--lav-dim);
+}
+
+.playingCard__rank {
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.playingCard__rank--black {
+  color: var(--ivory);
+}
+
+.playingCard__rank--red {
+  color: var(--pink);
+}
+
+/* Overlaps the slot's bottom edge - the parent .handRow needs a little
+   padding/margin so this never gets clipped by a scrolling ancestor. */
+.playingCard__tag {
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--night-3);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* The verdict's "converted hand" row - a smaller, quieter echo of the
+   entered row, teal-tinted so it reads as derived rather than dealt. */
+.playingCard--mini {
+  max-width: 52px;
+  margin: 0 auto;
+  border-radius: 9px;
+  background: rgba(37, 205, 185, 0.08);
+  border-color: rgba(37, 205, 185, 0.3);
+}
+
+.playingCard--mini .playingCard__rank {
+  font-size: 15px;
+}
+
+.playingCard--mini.playingCard--changed {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 1px rgba(37, 205, 185, 0.4);
+}
