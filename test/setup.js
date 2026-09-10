@@ -6,8 +6,12 @@ import { afterEach, beforeEach, vi } from 'vitest'
  * completeness.
  *
  * Installed fresh before every test so state never leaks between cases -
- * tests that need seeded localStorage do so via `localStorage.setItem`
- * directly in the test body, after this reset has already run.
+ * tests that need seeded storage do so via `localStorage.setItem` /
+ * `sessionStorage.setItem` directly in the test body, after this reset has
+ * already run. Two SEPARATE instances (not one shared object) mirror real
+ * browser semantics, where localStorage and sessionStorage are distinct
+ * stores - pick.js's own state lives in sessionStorage (see storage.js),
+ * everything else in this app in localStorage.
  */
 class MemoryStorage {
   #store = new Map()
@@ -31,6 +35,7 @@ class MemoryStorage {
 
 beforeEach(() => {
   globalThis.localStorage = new MemoryStorage()
+  globalThis.sessionStorage = new MemoryStorage()
 })
 
 afterEach(() => {

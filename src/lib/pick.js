@@ -1,13 +1,22 @@
-import { getStorageJSON, setStorageJSON } from './storage'
+import { getSessionJSON, setSessionJSON } from './storage'
 
 const STATE_KEY = 'mixpatti.pickState'
 
+// sessionStorage, not localStorage: a user asked for the shuffle-bag/
+// sideshow-ban state to start fresh every time the app is genuinely
+// reopened (a new PWA launch, a new tab), while still surviving an
+// in-session reload (a manual refresh, or pwaUpdate.js's own silent
+// update-reload) so the never-repeats-immediately guarantee doesn't
+// break mid-session. Every OTHER piece of persisted state in this app
+// (starred/muted prefs, players, audio mute, reading mode) deliberately
+// stays on localStorage - only the pick-engine's own draw state resets.
+
 // Target share of ROUNDS (not entries) that land "sideshow banned".
-// variations.json marks a couple of entries sideshowBanned: true because the
-// mechanic makes a sideshow nonsensical - non-negotiable. Everything else
-// gets an extra per-round coin flip so the two sources add up to ~20%; see
-// bannedRollRate() for the derivation.
-const TARGET_BANNED_SHARE = 0.2
+// variations.json marks a handful of entries sideshowBanned: true because
+// the mechanic makes a sideshow nonsensical - non-negotiable. Everything
+// else gets an extra per-round coin flip so the two sources add up to ~33%;
+// see bannedRollRate() for the derivation.
+export const TARGET_BANNED_SHARE = 0.33
 
 // A reroll only fires when this round's pick is banned AND last round's was
 // too. Capped so a pathological data change (e.g. a bag mostly
@@ -15,13 +24,18 @@ const TARGET_BANNED_SHARE = 0.2
 // last one is just accepted - best-effort, not a hard guarantee.
 const MAX_REROLL_ATTEMPTS = 4
 
-// Starred twists get a flat boost independent of how many are starred -
-// starring one twist vs five changes which starred twist comes up, not how
-// often "some starred twist" does. Rolled as a PRE-roll ahead of the
-// bagMain fallback below, not a slice carved out of it - a miss falls
-// through to the ordinary bagMain draw exactly as it ran before starring
-// existed, so starring something can't dilute the rest of the pool.
-const STARRED_SHARE = 0.3
+// A starred id is listed this many times in bagMain's own source list,
+// instead of once like everything else - so across one full shuffle cycle
+// it is drawn exactly this many times while every other unmuted id is
+// drawn exactly once. Deliberately a flat per-cycle COUNT, not a share of
+// all draws: the old STARRED_SHARE design (a 30% pre-roll into a separate
+// bag) made starring even 1-2 twists swallow up roughly a third of EVERY
+// draw regardless of bag size - a user reported exactly the visible
+// symptom (one favorite repeating 3+ times in a short session while most
+// of the other 30 twists never showed at all). See pickNext()'s own doc
+// comment for how duplicating the id in-place reuses bagMain's existing
+// machinery for free instead of needing a second bag.
+const STARRED_MULTIPLIER = 2
 
 // Below this many unmuted variations, honoring the mute set at all would
 // starve drawFrom() down toward the empty-pool case - so it's ignored
@@ -40,34 +54,77 @@ const HISTORY_WINDOW_TARGET = 5
  * comment, is actually the END of the freshly shuffled array, since draws
  * pop from list[top] downward.
  *
- * A flat HISTORY_WINDOW_TARGET can't apply to every bag: bagStar (the
- * starred ids) can be very small - sometimes just the starEligible floor of
- * 2 members - where reserving a big chunk of it as "can't come up yet"
- * would leave nothing to fill the remaining draw slots. Scaling with
+ * A flat HISTORY_WINDOW_TARGET can't apply to every bag size: a heavily
+ * muted bagMain (down toward the MIN_UNMUTED floor) or a synthetic test bag
+ * can be very small, where reserving a big chunk of it as "can't come up
+ * yet" would leave nothing to fill the remaining draw slots. Scaling with
  * sourceIds.length instead - floor(N / 3) capped at the target -
  * guarantees N - 2*windowSize >= windowSize, i.e. at least as many
  * non-avoided ids remain as the window itself needs to fill with swap
  * candidates (see avoidRecentInFront()). Same floor-not-gate idea as
- * MIN_UNMUTED/starEligible - just a continuously scaled size instead of a
- * yes/no cutoff, which is also why bagStar needs no special case: at its
- * starEligible floor of 2 members this already evaluates to 0 (no
- * avoidance at all), which is correct - a 2-member bag has no room to
- * spare for one. bagMain, the full unmuted pool (32 entries live today),
- * sits comfortably above the cap and always gets the full
- * HISTORY_WINDOW_TARGET window.
+ * MIN_UNMUTED - just a continuously scaled size instead of a yes/no cutoff.
+ * bagMain, the full unmuted pool (32 entries live today, plus one extra
+ * slot per starred id - see STARRED_MULTIPLIER), sits comfortably above the
+ * cap in real play and always gets the full HISTORY_WINDOW_TARGET window.
  */
 export function historyWindowSize(sourceIds) {
   return Math.min(HISTORY_WINDOW_TARGET, Math.floor(sourceIds.length / 3))
 }
 
 /**
- * Non-strict rate needed on the remaining entries so the strict-banned
- * share plus this extra roll converge on TARGET_BANNED_SHARE, derived from
- * the live dataset every call rather than hardcoded - this repo has a
- * documented history of stale hardcoded counts (see git log "Fix stale
- * 20-variation references after content update").
+ * pickNext()'s reroll (see there) actively suppresses two banned results
+ * landing back-to-back, which pulls the STEADY-STATE share of ACCEPTED
+ * results that are banned below the raw per-draw probability that feeds
+ * it - and the gap grows sharply as that per-draw probability rises. This
+ * inverts that relationship: given the desired steady-state share
+ * (TARGET_BANNED_SHARE), find the per-draw probability p that actually
+ * produces it, so bannedRollRate() can solve for a roll rate against p
+ * instead of naively against TARGET_BANNED_SHARE itself.
  *
- *   strictShare + eligibleShare * rate = TARGET_BANNED_SHARE
+ * Modeling "was the last ACCEPTED result banned" as a 2-state Markov chain
+ * gives a closed form for the steady-state share S in terms of the
+ * per-draw probability p and the reroll cap:
+ *
+ *   S = p / (1 + p - p^MAX_REROLL_ATTEMPTS)
+ *
+ * (from state "last was banned": the loop keeps rerolling while the new
+ * draw is ALSO banned, up to MAX_REROLL_ATTEMPTS, so the result is banned
+ * only if every attempt up to and including the final forced-accept one
+ * rolls banned, probability p^MAX_REROLL_ATTEMPTS; from state "last was
+ * NOT banned" there's no reroll at all, so the result is banned with
+ * probability p; solving the resulting balance equation for the
+ * steady-state S gives the formula above). Verified empirically against
+ * pickNext() itself (see pick.test.js) - matches within statistical noise.
+ *
+ * Inverting a degree-MAX_REROLL_ATTEMPTS polynomial for p in closed form
+ * isn't practical, so this bisects instead: S(p) is monotonically
+ * increasing on [0, 1], so a plain binary search converges quickly and
+ * needs no data beyond the target share and the reroll cap.
+ */
+export function requiredPerDrawRate(targetShare) {
+  if (targetShare <= 0) return 0
+  if (targetShare >= 1) return 1
+  let lo = 0
+  let hi = 1
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2
+    const steadyStateShare = mid / (1 + mid - mid ** MAX_REROLL_ATTEMPTS)
+    if (steadyStateShare < targetShare) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
+}
+
+/**
+ * Non-strict rate needed on the remaining entries so the strict-banned
+ * share plus this extra roll converge on the PER-DRAW probability that
+ * yields TARGET_BANNED_SHARE once pickNext()'s reroll has done its
+ * suppressing (see requiredPerDrawRate()) - derived from the live dataset
+ * every call rather than hardcoded - this repo has a documented history of
+ * stale hardcoded counts (see git log "Fix stale 20-variation references
+ * after content update").
+ *
+ *   strictShare + eligibleShare * rate = requiredPerDrawRate(TARGET_BANNED_SHARE)
  */
 export function bannedRollRate(variations) {
   const total = variations.length
@@ -75,15 +132,25 @@ export function bannedRollRate(variations) {
   const strict = variations.filter((v) => v.sideshowBanned === true).length
   const eligible = total - strict
   if (eligible <= 0) return 0
-  const shortfall = Math.max(0, TARGET_BANNED_SHARE - strict / total)
+  const perDrawTarget = requiredPerDrawRate(TARGET_BANNED_SHARE)
+  const shortfall = Math.max(0, perDrawTarget - strict / total)
   return Math.min(1, (shortfall * total) / eligible)
 }
 
-/** True if `a` and `b` contain exactly the same ids, order ignored. */
-function sameIdSet(a, b) {
+/**
+ * True if `a` and `b` contain exactly the same ids with the same
+ * multiplicities, order ignored - a plain Set-membership check isn't
+ * enough here since bagMain's source list now repeats a starred id
+ * STARRED_MULTIPLIER times (see there): re-starring a DIFFERENT id while
+ * unstarring the old one changes which id is duplicated without changing
+ * the overall set of ids present at all, which a Set-based comparison
+ * would miss entirely.
+ */
+function sameIdMultiset(a, b) {
   if (!Array.isArray(a) || a.length !== b.length) return false
-  const set = new Set(a)
-  return b.every((id) => set.has(id))
+  const sortedA = [...a].sort()
+  const sortedB = [...b].sort()
+  return sortedA.every((id, i) => id === sortedB[i])
 }
 
 /**
@@ -104,44 +171,45 @@ function effectiveMutedSet(variations, mutedIds) {
 
 /**
  * A persisted bag's `remaining` pool only means anything relative to the
- * exact set of ids it was shuffled from. If variations.json has since
- * added, removed, or re-muted/starred anything, that set no longer matches
- * bagSourceIds - and a stale pool can't tell "this id is brand new" apart
+ * exact source list it was shuffled from. If variations.json has since
+ * added, removed, or re-muted/starred anything - including just swapping
+ * WHICH id is starred, since that changes a duplicate count rather than
+ * membership (see sameIdMultiset()) - that source list no longer matches
+ * bagSourceIds, and a stale pool can't tell "this id is brand new" apart
  * from "this id was already drawn earlier this cycle", since both are
- * simply absent from `remaining`. Rather than leave newly-added
- * variations unreachable until whatever partial cycle happens to be
- * mid-flight empties out on its own (worst case: a full bag's worth of
- * picks), treat any source-set mismatch as a reason to drop that bag and
- * reshuffle fresh from the current data on the very next draw - see
- * drawFrom()'s empty-pool path. Persisting the source sets alongside the
- * pools (writeState) is what makes this comparison possible at all. Each
- * bag's recent-draw history (bag<Key>History, see historyWindowSize()) is
- * dropped on the exact same mismatch - a history of draws from a bag whose
- * membership just changed is stale in the same way `remaining` is.
+ * simply absent from `remaining`. Rather than leave newly-added or
+ * newly-starred variations unreachable until whatever partial cycle
+ * happens to be mid-flight empties out on its own (worst case: a full
+ * bag's worth of picks), treat any source-list mismatch as a reason to
+ * drop the bag and reshuffle fresh from the current data on the very next
+ * draw - see drawFrom()'s empty-pool path. Persisting the source list
+ * alongside the pool (writeState) is what makes this comparison possible
+ * at all. The bag's recent-draw history (bagMainHistory, see
+ * historyWindowSize()) is dropped on the exact same mismatch - a history
+ * of draws from a bag whose membership just changed is stale in the same
+ * way `remaining` is.
  *
  * A previously-persisted mixpatti.pickState still has the OLD bagA/bagB
- * shape, not bagMain - it has no bagMainSource at all, so `sameIdSet`
- * below (comparing against `undefined`) is false unconditionally, and this
- * function falls through to a fresh bagMain cycle on the very next draw.
- * No migration code needed for that; this read path already handles it.
+ * (or bagMain/bagStar) shape - it has no bagMainSource matching TODAY's
+ * source-list format at all, so `sameIdMultiset` below (comparing against
+ * `undefined`, or against a same-length-but-unduplicated list) is false,
+ * and this function falls through to a fresh bagMain cycle on the very
+ * next draw. No migration code needed for that; this read path already
+ * handles it.
  */
 function readState(bagSourceIds) {
   // `stored` fails this check (falls through to a fresh cycle below) for
   // anything that isn't a plain object - including `null` (nothing
-  // persisted, or getStorageJSON swallowed a corrupt/unavailable read)
-  // and a bare array (the old mixpatti.unseenIds single-array shape,
-  // which has no .bagMain/.bagStar).
-  const stored = getStorageJSON(STATE_KEY, null)
+  // persisted this session, or getSessionJSON swallowed a corrupt/
+  // unavailable read) and a bare array (the old mixpatti.unseenIds
+  // single-array shape, which has no .bagMain).
+  const stored = getSessionJSON(STATE_KEY, null)
   if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
-    const bagMainFresh = sameIdSet(stored.bagMainSource, bagSourceIds.bagMain)
-    const bagStarFresh = sameIdSet(stored.bagStarSource, bagSourceIds.bagStar)
+    const bagMainFresh = sameIdMultiset(stored.bagMainSource, bagSourceIds.bagMain)
     return {
       bagMain: bagMainFresh && Array.isArray(stored.bagMain) ? stored.bagMain : [],
       bagMainHistory:
         bagMainFresh && Array.isArray(stored.bagMainHistory) ? stored.bagMainHistory : [],
-      bagStar: bagStarFresh && Array.isArray(stored.bagStar) ? stored.bagStar : [],
-      bagStarHistory:
-        bagStarFresh && Array.isArray(stored.bagStarHistory) ? stored.bagStarHistory : [],
       lastBanned:
         typeof stored.lastBanned === 'boolean' ? stored.lastBanned : null,
     }
@@ -149,17 +217,14 @@ function readState(bagSourceIds) {
   return {
     bagMain: [],
     bagMainHistory: [],
-    bagStar: [],
-    bagStarHistory: [],
     lastBanned: null,
   }
 }
 
 function writeState(state, bagSourceIds) {
-  setStorageJSON(STATE_KEY, {
+  setSessionJSON(STATE_KEY, {
     ...state,
     bagMainSource: bagSourceIds.bagMain,
-    bagStarSource: bagSourceIds.bagStar,
   })
 }
 
@@ -183,7 +248,7 @@ function writeState(state, bagSourceIds) {
  * there are still N - 2*windowSize >= windowSize untouched ids outside it
  * to swap in. The `candidatePool.length === 0` bail-out below is defense-
  * in-depth for when that margin doesn't hold (e.g. a hand-edited
- * localStorage value with an oversized history) - same best-effort-not-a-
+ * sessionStorage value with an oversized history) - same best-effort-not-a-
  * guarantee precedent as MAX_REROLL_ATTEMPTS elsewhere in this file: leave
  * that one slot as the shuffle already had it rather than throw or loop.
  */
@@ -214,27 +279,26 @@ function avoidRecentInFront(list, avoidIds, windowSize) {
  * A fresh shuffle can coincidentally deal the same id that just finished the
  * previous cycle right back out on top - and since a bag only ever loses the
  * id it hands out, that refill instant would be the ONLY place a repeat
- * could sneak in IF a bag were tracked in total isolation. But bagMain and
- * bagStar are NOT disjoint - bagStar's ids are a subset of bagMain's, drawn
- * from deliberately so a starred twist is reachable via either path (that's
- * the boost, not a separate exclusive group) - so `previousId` can be
- * sitting un-drawn in one bag's pool even though it was just handed out by
- * the OTHER. There is no "disjoint by construction" argument to lean on
- * here at all, for either bag: drawFrom()'s previousId swap below - and its
+ * could sneak in IF `sourceIds` never repeated an id within itself. But a
+ * starred id is deliberately listed STARRED_MULTIPLIER times in bagMain's
+ * own source list (see pickNext()) - so two of its copies can easily end up
+ * adjacent in a fresh shuffle, which is exactly the same shape of hazard:
+ * `previousId` can be sitting un-drawn elsewhere in `remaining` even though
+ * it was just handed out. drawFrom()'s previousId swap below - and its
  * hardening against a single leftover id equalling previousId - is the ONLY
- * thing that ever prevents a repeat, full stop. If the bag in play happens
- * to be down to exactly one id, and it's previousId, the `top > 0` swap
- * guard has nothing to swap with and would otherwise repeat it. Treating
- * "one id left, and it's previousId" the same as "no ids left" closes that:
- * a fresh reshuffle of `sourceIds` always has an alternative, PROVIDED
- * sourceIds itself has at least 2 members - which is exactly why pickNext()
- * only ever calls this for bagStar when starEligible (see there); bagMain
- * always has far more than 2 members in real play, so this branch is a
- * defensive guarantee there rather than something normally exercised.
+ * thing that ever prevents a repeat, full stop, whether the near-miss came
+ * from a coincidental reshuffle or from a starred id's own duplicate copies.
+ * If the bag is down to exactly one id, and it's previousId, the `top > 0`
+ * swap guard has nothing to swap with and would otherwise repeat it.
+ * Treating "one id left, and it's previousId" the same as "no ids left"
+ * closes that: a fresh reshuffle of `sourceIds` always has an alternative,
+ * PROVIDED sourceIds itself has at least 2 members - true in real play
+ * (bagMain always has far more), so this branch is a defensive guarantee
+ * rather than something normally exercised.
  *
  * The swap itself still runs unconditionally rather than only at a
  * detected refill boundary: it's cheap, and it also covers a hand-edited or
- * corrupt localStorage value that puts previousId on top of an otherwise
+ * corrupt sessionStorage value that puts previousId on top of an otherwise
  * mid-cycle bag.
  *
  * On a genuine reshuffle (the `exhausted` branch), `history` - this SAME
@@ -243,7 +307,7 @@ function avoidRecentInFront(list, avoidIds, windowSize) {
  * avoidRecentInFront(), before the previousId swap above ever runs. Only
  * `history.slice(-windowSize)` is trusted as the avoid-set even though
  * callers already cap it there (see pickNext()) - a hand-edited
- * localStorage value could hand back something longer, and
+ * sessionStorage value could hand back something longer, and
  * avoidRecentInFront()'s feasibility proof depends on the avoid-set never
  * exceeding windowSize.
  */
@@ -273,60 +337,75 @@ function drawFrom(remaining, sourceIds, previousId, history = []) {
 /**
  * Pick the next variation, plus whether sideshow is banned this round.
  *
- * Two shuffle-bags feed the draw: bagMain (every unmuted id) is the
- * default, and bagStar - a pre-roll pool of starred unmuted ids
- * (STARRED_SHARE), rolled BEFORE falling through to bagMain each attempt -
- * gives starred twists a boost. bagStar's ids deliberately OVERLAP
- * bagMain's: a starred twist lives in both at once, so it's reachable via
- * either path - that's the boost, not a separate exclusive group. There
- * used to be a second exclusive bag here (the "classics" vs "fun twists"
- * split, drawn by variation.priority) - that concept is gone along with
- * the priority field itself; every variation is equal weight now, and
- * bagMain is simply the whole unmuted pool.
+ * A single shuffle-bag, bagMain, feeds the draw - every unmuted id gets one
+ * slot, and a starred unmuted id gets STARRED_MULTIPLIER slots instead, by
+ * simply being listed that many times in bagMain's own source list. There
+ * used to be a separate bagStar - a pre-roll pool of
+ * starred ids rolled probabilistically (STARRED_SHARE) BEFORE falling
+ * through to bagMain - but that made starring even 1-2 twists swallow up
+ * roughly a third of EVERY draw regardless of how many other twists
+ * existed, which is far more concentrated than "duplicate the id in the
+ * bag" reads as. Duplicating in place instead means a starred id is drawn
+ * exactly STARRED_MULTIPLIER times per full cycle through bagMain, same as
+ * everything else's exactly-once - a flat, bag-size-independent boost -
+ * and it comes for free out of the SAME single-bag machinery already built
+ * for the plain unmuted case: drawFrom()'s previousId swap (which already
+ * has to handle a fresh reshuffle coincidentally repeating an id, see its
+ * own comment) equally covers two of a starred id's own duplicate copies
+ * landing adjacent in a reshuffle, and avoidRecentInFront() equally keeps
+ * a just-drawn duplicate off the front of the next cycle. There's also no
+ * `starEligible` floor anymore (the old bagStar design needed >= 2 starred
+ * ids, since an isolated 1-member exclusive bag couldn't ever avoid
+ * repeating itself) - a single starred id duplicated inside the much
+ * larger bagMain has plenty of other ids for the previousId swap to use,
+ * so it works uniformly regardless of how many things are starred,
+ * including just one.
  *
- * Because there is now only ONE non-star bag, there is no "two disjoint
- * bags can't hand back the same id" argument to lean on for the
- * never-repeats-immediately guarantee, and there never really was one for
- * bagStar either (see drawFrom()'s own comment). drawFrom()'s unconditional
- * previousId-swap - and its hardening against a single leftover id
- * equalling previousId - is the ONLY thing that prevents an immediate
- * repeat, for both bags, always.
+ * There used to be a second exclusive bag here too (the "classics" vs "fun
+ * twists" split, drawn by variation.priority) - that concept is gone along
+ * with the priority field itself; every variation is equal weight, plus
+ * whatever extra bagMain slots starring adds.
  *
- * Muting: `mutedIds` are dropped from bagMain/bagStar's source id lists up
- * front (see effectiveMutedSet(), which also holds the floor below which
- * muting is ignored outright), and bannedRollRate() is computed over that
- * same unmuted list so the ~20% target doesn't drift as entries get muted.
- * Changing which ids are muted OR starred changes bagSourceIds.bag* -
- * readState() compares that against the persisted bag*Source snapshots,
- * and a mismatch drops that bag and reshuffles it fresh on the very next
- * draw. This is the same mechanism that already makes a newly-added
- * variations.json entry reachable immediately; muting/starring just gives
- * the app another way to trigger it deliberately.
+ * The never-repeats-immediately guarantee has nothing to do with bags
+ * being disjoint (there's only one now, and duplicate entries live inside
+ * it on purpose) - drawFrom()'s unconditional previousId-swap, and its
+ * hardening against a single leftover id equalling previousId, is the ONLY
+ * thing that ever prevents an immediate repeat.
+ *
+ * Muting: `mutedIds` are dropped from bagMain's source id list up front
+ * (see effectiveMutedSet(), which also holds the floor below which muting
+ * is ignored outright), and bannedRollRate() is computed over that same
+ * unmuted list so the ~33% target doesn't drift as entries get muted.
+ * Changing which ids are muted OR starred changes bagSourceIds.bagMain -
+ * readState() compares that (as a multiset - see sameIdMultiset()) against
+ * the persisted bagMainSource snapshot, and a mismatch drops the bag and
+ * reshuffles it fresh on the very next draw. This is the same mechanism
+ * that already makes a newly-added variations.json entry reachable
+ * immediately; muting/starring just gives the app another way to trigger
+ * it deliberately.
  *
  * The sideshow-ban reroll compares EFFECTIVE (resolved) banned status, not
- * the two static `sideshowBanned` data flags - that's what the player
+ * the static `sideshowBanned` data flag alone - that's what the player
  * actually experiences two rounds running. Trade-off: unlike the
  * twist-repeat guarantee (structural, absolute), this is a bounded reroll,
  * so it is best-effort - with MAX_REROLL_ATTEMPTS capped, two genuinely
  * strict-banned entries CAN still land back-to-back in the unlucky case
- * where every attempt keeps re-drawing a banned entry. With only ~2 strict
- * entries in 32 and a ~20% overall banned rate, that chain is vanishingly
- * rare in practice. A rerolled (discarded) attempt still pops its draw off
- * whichever bag served it before looping to try again - that bag's cycle
- * quietly runs one draw short of a full round-trip through its own
- * membership when this fires, which is the tradeoff for a reroll not being
- * a hard guarantee.
+ * where every attempt keeps re-drawing a banned entry. A rerolled
+ * (discarded) attempt still pops its draw off bagMain before looping to
+ * try again - the cycle quietly runs one draw short of a full round-trip
+ * through its own membership when this fires, which is the tradeoff for a
+ * reroll not being a hard guarantee.
  *
- * Each bag also carries its own bag<Key>History (see historyWindowSize())
- * so that when IT reshuffles, the new cycle's first few draws avoid the
- * outgoing cycle's last few - a bag cycling through all its own members
+ * bagMain also carries its own bagMainHistory (see historyWindowSize()) so
+ * that when it reshuffles, the new cycle's first few draws avoid the
+ * outgoing cycle's last few - the bag cycling through all its own members
  * before repeating any (see drawFrom()) already stops the same twist from
  * clustering near itself in absolute terms, but says nothing about *where
  * in the next cycle* it can land, and a coincidental reshuffle can deal it
- * right back out near the front. That's a per-bag, structural (not
- * best-effort) guarantee - separate from the sideshow-ban reroll above,
- * which stays probabilistic because rerolling a ban is a completely
- * different kind of unlucky.
+ * right back out near the front. That's a structural (not best-effort)
+ * guarantee - separate from the sideshow-ban reroll above, which stays
+ * probabilistic because rerolling a ban is a completely different kind of
+ * unlucky.
  */
 export function pickNext(variations, previousId, { mutedIds = [], starredIds = [] } = {}) {
   const byId = new Map(variations.map((v) => [v.id, v]))
@@ -334,35 +413,33 @@ export function pickNext(variations, previousId, { mutedIds = [], starredIds = [
   const starredSet = new Set(starredIds)
   const unmuted = variations.filter((v) => !mutedSet.has(v.id))
   const bagSourceIds = {
-    bagMain: unmuted.map((v) => v.id),
-    bagStar: unmuted.filter((v) => starredSet.has(v.id)).map((v) => v.id),
+    bagMain: unmuted.flatMap((v) =>
+      starredSet.has(v.id) ? Array(STARRED_MULTIPLIER).fill(v.id) : [v.id],
+    ),
   }
-  const starEligible = bagSourceIds.bagStar.length >= 2
   const state = readState(bagSourceIds)
   const rollRate = bannedRollRate(unmuted)
 
   let variation
   let banned
   for (let attempt = 1; attempt <= MAX_REROLL_ATTEMPTS; attempt++) {
-    const useStarred = starEligible && Math.random() < STARRED_SHARE
-    const bagKey = useStarred ? 'bagStar' : 'bagMain'
     const { id, rest, history } = drawFrom(
-      state[bagKey],
-      bagSourceIds[bagKey],
+      state.bagMain,
+      bagSourceIds.bagMain,
       previousId,
-      state[`${bagKey}History`],
+      state.bagMainHistory,
     )
-    state[bagKey] = rest
-    state[`${bagKey}History`] = history
+    state.bagMain = rest
+    state.bagMainHistory = history
 
     variation = byId.get(id) ?? variations[0]
     banned = variation.sideshowBanned === true || Math.random() < rollRate
 
     const backToBack = banned && state.lastBanned === true
     if (!backToBack || attempt === MAX_REROLL_ATTEMPTS) break
-    // Otherwise: this pick is discarded unseen. It stays popped from its
-    // bag for the rest of this cycle (resurfaces at the next reshuffle of
-    // that bag) - loop for a fresh draw from a freshly-chosen bag.
+    // Otherwise: this pick is discarded unseen. It stays popped from
+    // bagMain for the rest of this cycle (resurfaces at the next reshuffle)
+    // - loop for a fresh draw.
   }
 
   state.lastBanned = banned

@@ -158,20 +158,54 @@ conventions below for where it goes.
   `{ mutedIds, starredIds }`. Every variation is equal weight (the old
   priority-based bagA/bagB split - a "classics" bag drawn a fifth of the
   time vs everything else - is gone along with the `priority` field
-  itself); the only two shuffle-bags left are `bagMain` (all unmuted ids)
-  and `bagStar`, a pre-roll pool of starred unmuted ids layered on top -
-  see that file's own JSDoc for the overlap hazard this introduces
-  (`bagStar`'s ids are a subset of `bagMain`'s, not disjoint from it) and
-  how `drawFrom()` was hardened to close it. A
-  floor (`MIN_UNMUTED`, exported from `pick.js`) stops muting from ever
-  starving the draw to nothing - the UI greys out the mute control at
-  that exact number (`useVariationPrefs.js`'s `canToggleMute`), and
-  `pick.js` ignores the mute set outright as a backstop if that floor is
-  ever violated anyway (stale state, a smaller `variations.json`, etc.).
-  Result's controls float beside the card's right edge, vertically
-  centred (see the `--band-under` note below for why not
-  `.stage__under`); BrowseSheet's live per-row plus an All/Starred/Muted
-  filter above the list.
+  itself); there is only ONE shuffle-bag now, `bagMain` (all unmuted ids).
+  A starred unmuted id is simply listed `STARRED_MULTIPLIER` (2) times in
+  `bagMain`'s own source list instead of once, so it's drawn exactly that
+  many times per full cycle while everything else is drawn once - a flat,
+  bag-size-independent boost that comes for free out of the same
+  single-bag machinery (`drawFrom()`'s previousId swap and
+  `avoidRecentInFront()` both already have to handle a bag's own
+  duplicate/repeat entries). An earlier design used a SEPARATE `bagStar`
+  pre-roll bag (a flat ~30% chance per draw, regardless of how many things
+  were starred) - replaced after a user reported exactly the symptom that
+  design produces: one favorite repeating 3+ times in a short session
+  while most other twists never showed at all. See `pick.js`'s own JSDoc
+  on `pickNext()`/`STARRED_MULTIPLIER` for the full reasoning, and
+  `pick.test.js`'s "short-session characterization" describe block for the
+  regression coverage. A floor (`MIN_UNMUTED`, exported from `pick.js`)
+  stops muting from ever starving the draw to nothing - the UI greys out
+  the mute control at that exact number (`useVariationPrefs.js`'s
+  `canToggleMute`), and `pick.js` ignores the mute set outright as a
+  backstop if that floor is ever violated anyway (stale state, a smaller
+  `variations.json`, etc.). Result's controls float beside the card's
+  right edge, vertically centred (see the `--band-under` note below for
+  why not `.stage__under`); BrowseSheet's live per-row plus an
+  All/Starred/Muted filter above the list.
+- **The sideshow-ban reroll's target share isn't the same number you'd
+  naively plug in.** `pick.js`'s reroll (see `pickNext()`) discards a
+  pick and redraws when it's banned AND the previous round was too -
+  which actively suppresses back-to-back bans, pulling the STEADY-STATE
+  share of ACCEPTED rounds that land banned below the raw per-draw
+  probability that feeds it, and the gap widens sharply as that
+  probability rises. `requiredPerDrawRate()` inverts this (a small
+  Markov-chain-derived formula, solved by bisection) so `TARGET_BANNED_SHARE`
+  keeps meaning what it says - the share a PLAYER actually experiences -
+  rather than a pre-reroll input that happens to get discounted on the way
+  out. Discovered when raising the target from 0.2 to 0.33: naively using
+  0.33 as the per-draw rate only converged to an observed ~25% share.
+- **`pick.js`'s own draw state (the shuffle-bag contents, its recent-draw
+  history, and the last-banned flag) persists to `sessionStorage`, not
+  `localStorage`** - deliberately different from every other piece of
+  persisted state in this app (starred/muted prefs, players, audio mute,
+  reading mode all stay on `localStorage`). A user asked for the "what's
+  been drawn already" state to start fresh every time the app is
+  genuinely reopened (a new PWA launch, a new tab) rather than carrying
+  over indefinitely; `sessionStorage` gives that for free while still
+  surviving an in-session reload (a manual refresh, or `pwaUpdate.js`'s
+  own silent update-reload), so the never-repeats-immediately guarantee
+  doesn't break mid-session. `storage.js`'s `getSessionJSON`/
+  `setSessionJSON` mirror the existing `getStorageJSON`/`setStorageJSON`
+  pair one-for-one, just against the other store.
 - `src/data/variations.json` is the content: the 32 Teen Patti twists.
   Treat its schema as fixed unless the user asks to change it. When adding
   or removing entries, also check for two things that don't come from the

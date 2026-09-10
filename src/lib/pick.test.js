@@ -1,19 +1,27 @@
 import { describe, expect, it, vi } from 'vitest'
 import variations from '../data/variations.json'
-import { MIN_UNMUTED, bannedRollRate, historyWindowSize, pickNext, shuffled } from './pick.js'
+import {
+  MIN_UNMUTED,
+  TARGET_BANNED_SHARE,
+  bannedRollRate,
+  historyWindowSize,
+  pickNext,
+  requiredPerDrawRate,
+  shuffled,
+} from './pick.js'
 
 const STATE_KEY = 'mixpatti.pickState'
 
 // ---------------------------------------------------------------------------
 // Characterisation tests: pin down pick.js's CURRENT observable behaviour
-// (return value + localStorage before/after), not a spec written in
+// (return value + sessionStorage before/after), not a spec written in
 // advance. If a test here disagrees with pick.js, the test is wrong.
 //
 // Randomness strategy:
 //  - Aggregate/statistical properties (never-repeats-immediately,
 //    bannedRollRate convergence) run pickNext many times with REAL
 //    Math.random and a generous tolerance band.
-//  - Behaviour that needs a specific setup (stale localStorage shapes,
+//  - Behaviour that needs a specific setup (stale sessionStorage shapes,
 //    the reroll cap) stubs Math.random with vi.spyOn(Math, 'random').
 // ---------------------------------------------------------------------------
 
@@ -30,6 +38,51 @@ describe('pickNext - never repeats the immediately previous id', () => {
   })
 })
 
+describe('pickNext - persists its draw state to sessionStorage, not localStorage', () => {
+  // A user asked for the shuffle-bag/sideshow-ban state to start fresh
+  // every time the app is genuinely reopened (a new PWA launch, a new
+  // tab) rather than carrying over indefinitely. sessionStorage is what
+  // gives that for free: it resets on a real new session but still
+  // survives an in-page reload - unlike localStorage, which every OTHER
+  // piece of this app's persisted state (starred/muted prefs, players,
+  // etc) deliberately keeps using. This pins pick.js to the right store.
+  it('writes mixpatti.pickState to sessionStorage and leaves localStorage untouched', () => {
+    expect(localStorage.getItem(STATE_KEY)).toBeNull()
+    expect(sessionStorage.getItem(STATE_KEY)).toBeNull()
+
+    pickNext(variations, undefined)
+
+    expect(sessionStorage.getItem(STATE_KEY)).not.toBeNull()
+    expect(localStorage.getItem(STATE_KEY)).toBeNull()
+  })
+
+  it('ignores a value seeded in localStorage under the same key (reads from sessionStorage only)', () => {
+    const bagMainIds = variations.map((v) => v.id)
+    // bagMainSource here DOES match live data, with a plausible 1-item
+    // "remaining" pool - if this were wrongly read (from localStorage
+    // instead of sessionStorage), sameIdMultiset would consider it fresh
+    // and reuse that 1-item pool as-is instead of reshuffling.
+    localStorage.setItem(
+      STATE_KEY,
+      JSON.stringify({
+        bagMain: [bagMainIds[0]],
+        lastBanned: null,
+        bagMainSource: bagMainIds,
+      }),
+    )
+
+    pickNext(variations, undefined)
+
+    const written = JSON.parse(sessionStorage.getItem(STATE_KEY))
+    // Correctly ignoring the localStorage value means sessionStorage was
+    // empty, forcing a fresh reshuffle of the whole bag before popping
+    // one - leaving bagMainIds.length - 1 remaining. Wrongly reading the
+    // seeded localStorage value would reuse its 1-item pool instead,
+    // leaving 0.
+    expect(written.bagMain).toHaveLength(bagMainIds.length - 1)
+  })
+})
+
 describe('pickNext - the main bag cycles through (nearly) all its own members before repeating', () => {
   // There is only one non-star bag now (bagMain, priority's old A/B split is
   // gone) - and bagMain's source is exactly `unmuted`, the SAME set
@@ -43,10 +96,15 @@ describe('pickNext - the main bag cycles through (nearly) all its own members be
   // without ever being RETURNED, so a "full cycle" as observed through
   // pickNext's return value can run a few members short. That's a real,
   // accepted characteristic of the collapsed single-bag design, not a test
-  // bug - so this asserts "close to a full cycle", not an exact count.
+  // bug - so this asserts "close to a full cycle" ON AVERAGE, not an exact
+  // count and not a per-cycle worst case: raising TARGET_BANNED_SHARE (see
+  // requiredPerDrawRate()) roughly doubled the per-draw banned probability
+  // for an all-non-strict synthetic bag like this one, which raises the
+  // swallow rate enough that any SINGLE cycle's size varies a lot - the
+  // average across many cycles is what stays stable.
   const SWALLOW_TOLERANCE = 6
 
-  it('a repeat only happens once most of the bag has been drawn', () => {
+  it('a repeat only happens once most of the bag has been drawn, on average', () => {
     const bagSize = 20
     const synthetic = Array.from({ length: bagSize }, (_, i) => ({
       id: `v${i}`,
@@ -56,17 +114,20 @@ describe('pickNext - the main bag cycles through (nearly) all its own members be
     const cycleSeen = new Set()
     let previousId
     let cyclesCompleted = 0
-    for (let i = 0; i < 4000; i++) {
+    let totalDistinctAcrossCycles = 0
+    for (let i = 0; i < 8000; i++) {
       const { variation } = pickNext(synthetic, previousId)
       previousId = variation.id
       if (cycleSeen.has(variation.id)) {
-        expect(cycleSeen.size).toBeGreaterThanOrEqual(bagSize - SWALLOW_TOLERANCE)
+        totalDistinctAcrossCycles += cycleSeen.size
         cycleSeen.clear()
         cyclesCompleted++
       }
       cycleSeen.add(variation.id)
     }
     expect(cyclesCompleted).toBeGreaterThan(20) // sanity: plenty of real cycle boundaries
+    const avgDistinctPerCycle = totalDistinctAcrossCycles / cyclesCompleted
+    expect(avgDistinctPerCycle).toBeGreaterThanOrEqual(bagSize - SWALLOW_TOLERANCE)
   })
 })
 
@@ -117,7 +178,7 @@ describe("pickNext - the main bag's recent-history window avoids repeating the o
     const bagIds = Array.from({ length: 32 }, (_, i) => `m${i}`)
     const synthetic = bagIds.map((id) => ({ id, sideshowBanned: false }))
     expect(historyWindowSize(bagIds)).toBe(5)
-    assertRareTailHeadOverlap(synthetic, 5, 6000, 0.06)
+    assertRareTailHeadOverlap(synthetic, 5, 6000, 0.13)
   })
 
   it('a small bag still gets a minimal window (N=4, K=1)', () => {
@@ -129,16 +190,13 @@ describe("pickNext - the main bag's recent-history window avoids repeating the o
 
   it('does not throw when a persisted history is longer than the window and gets clamped', () => {
     const bagMainIds = variations.map((v) => v.id)
-    localStorage.setItem(
+    sessionStorage.setItem(
       STATE_KEY,
       JSON.stringify({
         bagMain: [], // empty -> forces a reshuffle, the only branch that reads history
         bagMainHistory: bagMainIds, // pathologically long: the bag's ENTIRE own membership
-        bagStar: [],
-        bagStarHistory: [],
         lastBanned: null,
         bagMainSource: bagMainIds,
-        bagStarSource: [],
       }),
     )
     const { variation } = pickNext(variations, undefined)
@@ -146,30 +204,28 @@ describe("pickNext - the main bag's recent-history window avoids repeating the o
   })
 })
 
-describe('pickNext - a stale persisted bag source is dropped and reshuffled (sameIdSet)', () => {
-  // writeState() unconditionally recomputes bagMainSource/bagStarSource
-  // fresh on EVERY call, regardless of what readState() did - so asserting
-  // on the written source arrays proves nothing about whether the drop
-  // logic fired. The only thing that actually differs between "stale pool
-  // wrongly reused" and "correctly dropped and reshuffled" is the SIZE of
-  // the bag's remaining pool after one forced draw: reuse of a 1-element
-  // stale pool leaves 0 remaining; a fresh reshuffle of the full live bag
-  // leaves (bagSize - 1) remaining.
+describe('pickNext - a stale persisted bag source is dropped and reshuffled (sameIdMultiset)', () => {
+  // writeState() unconditionally recomputes bagMainSource fresh on EVERY
+  // call, regardless of what readState() did - so asserting on the written
+  // source array proves nothing about whether the drop logic fired. The
+  // only thing that actually differs between "stale pool wrongly reused"
+  // and "correctly dropped and reshuffled" is the SIZE of the bag's
+  // remaining pool after one forced draw: reuse of a 1-element stale pool
+  // leaves 0 remaining; a fresh reshuffle of the full live bag leaves
+  // (bagSize - 1) remaining.
   const bagMainIds = variations.map((v) => v.id)
   const sampleId = bagMainIds[0]
 
   it('drops a persisted bagMain whose bagMainSource no longer matches live data', () => {
-    localStorage.setItem(STATE_KEY, JSON.stringify({
+    sessionStorage.setItem(STATE_KEY, JSON.stringify({
       bagMain: [sampleId], // plausible but stale 1-element "remaining" pool
-      bagStar: [],
       lastBanned: null,
       bagMainSource: ['some-completely-different-stale-id'], // mismatched -> drop
-      bagStarSource: [],
     }))
 
     pickNext(variations, undefined)
 
-    const written = JSON.parse(localStorage.getItem(STATE_KEY))
+    const written = JSON.parse(sessionStorage.getItem(STATE_KEY))
     // A correctly-dropped bag reshuffles all of bagMainIds and pops one,
     // leaving bagMainIds.length - 1. A wrongly-reused stale pool (length 1)
     // would leave 0.
@@ -177,28 +233,56 @@ describe('pickNext - a stale persisted bag source is dropped and reshuffled (sam
   })
 
   it('also drops a persisted bagMainHistory whose bagMainSource no longer matches live data', () => {
-    localStorage.setItem(STATE_KEY, JSON.stringify({
+    sessionStorage.setItem(STATE_KEY, JSON.stringify({
       bagMain: [sampleId],
       bagMainHistory: ['not-even-a-real-bagMain-id'], // proves it's dropped, not coincidentally unused
-      bagStar: [],
       lastBanned: null,
       bagMainSource: ['some-completely-different-stale-id'], // mismatched -> drop
-      bagStarSource: [],
     }))
 
     const { variation } = pickNext(variations, undefined)
 
-    const written = JSON.parse(localStorage.getItem(STATE_KEY))
+    const written = JSON.parse(sessionStorage.getItem(STATE_KEY))
     // A correctly-dropped history starts this round's ring buffer fresh -
     // just this draw. A wrongly-carried-over stale array would still hold
     // 'not-even-a-real-bagMain-id'.
     expect(written.bagMainHistory).toEqual([variation.id])
   })
+
+  it('detects a change in WHICH id is duplicated even when the overall id set is unchanged', () => {
+    // A starred id is listed twice in bagMain's source list (see
+    // STARRED_MULTIPLIER) - re-starring a DIFFERENT id changes which id is
+    // duplicated without changing the set of ids present at all. A plain
+    // Set-membership comparison (the old sameIdSet) would miss this
+    // entirely: both the stale and the live source contain exactly the
+    // same ids, just with a different one repeated. sameIdMultiset()
+    // exists specifically to catch it.
+    const idA = variations[0].id
+    const idB = variations[1].id
+    const staleSourceWithADuplicated = [...bagMainIds, idA]
+    sessionStorage.setItem(
+      STATE_KEY,
+      JSON.stringify({
+        bagMain: [idA], // stale 1-element pool - would wrongly survive a Set-only check
+        lastBanned: null,
+        bagMainSource: staleSourceWithADuplicated,
+      }),
+    )
+
+    // Star idB instead of idA - same overall id set, different duplicate.
+    pickNext(variations, undefined, { starredIds: [idB] })
+
+    const written = JSON.parse(sessionStorage.getItem(STATE_KEY))
+    // Correctly dropped: reshuffles the fresh (bagMainIds.length + 1)
+    // source (idB duplicated) and pops one, leaving bagMainIds.length. A
+    // wrongly-reused stale pool (length 1) would leave 0.
+    expect(written.bagMain).toHaveLength(bagMainIds.length)
+  })
 })
 
 describe('pickNext - legacy shape and corrupt storage fall back to a fresh cycle without throwing', () => {
   it('falls back cleanly for the old bare-array (mixpatti.unseenIds-style) shape', () => {
-    localStorage.setItem(STATE_KEY, JSON.stringify(['some', 'old', 'unseen', 'ids']))
+    sessionStorage.setItem(STATE_KEY, JSON.stringify(['some', 'old', 'unseen', 'ids']))
     expect(() => pickNext(variations, undefined)).not.toThrow()
     const { variation, sideshowBannedThisRound } = pickNext(variations, undefined)
     expect(variations.some((v) => v.id === variation.id)).toBe(true)
@@ -206,30 +290,28 @@ describe('pickNext - legacy shape and corrupt storage fall back to a fresh cycle
   })
 
   it('falls back cleanly for a corrupt, non-JSON-parseable string', () => {
-    localStorage.setItem(STATE_KEY, '{not valid json::')
+    sessionStorage.setItem(STATE_KEY, '{not valid json::')
     expect(() => pickNext(variations, undefined)).not.toThrow()
     const { variation } = pickNext(variations, undefined)
     expect(variations.some((v) => v.id === variation.id)).toBe(true)
   })
 
-  it('falls back cleanly when localStorage.getItem itself throws', () => {
-    vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
+  it('falls back cleanly when sessionStorage.getItem itself throws', () => {
+    vi.spyOn(sessionStorage, 'getItem').mockImplementation(() => {
       throw new Error('storage unavailable')
     })
     expect(() => pickNext(variations, undefined)).not.toThrow()
   })
 
-  it('falls back cleanly for a current-shape blob missing the newer bag*History fields', () => {
-    localStorage.setItem(
+  it('falls back cleanly for a current-shape blob missing the newer bagMainHistory field', () => {
+    sessionStorage.setItem(
       STATE_KEY,
       JSON.stringify({
         bagMain: [],
-        bagStar: [],
         lastBanned: null,
         bagMainSource: variations.map((v) => v.id),
-        bagStarSource: [],
-        // no bagMainHistory/bagStarHistory - this is what mixpatti.pickState
-        // looked like before the anti-clustering window.
+        // no bagMainHistory - this is what mixpatti.pickState looked like
+        // before the anti-clustering window.
       }),
     )
     expect(() => pickNext(variations, undefined)).not.toThrow()
@@ -238,11 +320,11 @@ describe('pickNext - legacy shape and corrupt storage fall back to a fresh cycle
   it('falls back cleanly for a pre-collapse blob (old bagA/bagB shape, no bagMain/bagMainSource)', () => {
     // variation.priority is gone too, so this old shape's bagASource /
     // bagBSource split can't even be reconstructed from live data anymore -
-    // moot, since sameIdSet(undefined, bagSourceIds.bagMain) is false
+    // moot, since sameIdMultiset(undefined, bagSourceIds.bagMain) is false
     // unconditionally and readState() falls straight through to a fresh
     // bagMain cycle. No migration code needed for this - see readState()'s
     // own comment.
-    localStorage.setItem(
+    sessionStorage.setItem(
       STATE_KEY,
       JSON.stringify({
         bagA: [],
@@ -274,11 +356,13 @@ describe('bannedRollRate', () => {
     const total = variations.length
     const strict = variations.filter((v) => v.sideshowBanned === true).length
     const eligible = total - strict
-    const expected = Math.min(1, (Math.max(0, 0.2 - strict / total) * total) / eligible)
+    const perDrawTarget = requiredPerDrawRate(TARGET_BANNED_SHARE)
+    const expected = Math.min(1, (Math.max(0, perDrawTarget - strict / total) * total) / eligible)
     expect(bannedRollRate(variations)).toBeCloseTo(expected, 10)
   })
 
-  it('converges the overall banned share on TARGET_BANNED_SHARE (0.2) across many full pickNext calls', () => {
+  it('converges the overall banned share on TARGET_BANNED_SHARE (0.33) across many full pickNext calls', () => {
+    expect(TARGET_BANNED_SHARE).toBe(0.33) // pin the exact target this test converges on
     const trials = 4000
     let bannedCount = 0
     let previousId
@@ -288,10 +372,46 @@ describe('bannedRollRate', () => {
       previousId = variation.id
     }
     const share = bannedCount / trials
-    // +-0.05 around the 0.2 target is a generous tolerance for n=4000 -
+    // +-0.05 around the 0.33 target is a generous tolerance for n=4000 -
     // wide enough not to flake, tight enough to catch a real regression.
-    expect(share).toBeGreaterThan(0.15)
-    expect(share).toBeLessThan(0.25)
+    expect(share).toBeGreaterThan(0.28)
+    expect(share).toBeLessThan(0.38)
+  })
+})
+
+describe('requiredPerDrawRate', () => {
+  // pickNext()'s reroll suppresses two banned results landing back-to-back,
+  // which pulls the steady-state OBSERVED banned share below the raw
+  // per-draw probability that feeds it - discovered while raising
+  // TARGET_BANNED_SHARE from 0.2 to 0.33: naively using 0.33 as the
+  // per-draw probability only converged to an observed ~0.25 share (see
+  // the Markov-chain derivation in pick.js's own doc comment). These pin
+  // the inversion this function performs to correct for that.
+
+  it('requires a HIGHER per-draw rate than the target share, since the reroll suppresses some of it', () => {
+    expect(requiredPerDrawRate(0.33)).toBeGreaterThan(0.33)
+  })
+
+  it('feeding its own output back through the steady-state formula recovers the original target', () => {
+    const MAX_REROLL_ATTEMPTS = 4 // mirrors pick.js's own private constant
+    for (const target of [0.05, 0.2, 0.33, 0.5, 0.8]) {
+      const p = requiredPerDrawRate(target)
+      const recovered = p / (1 + p - p ** MAX_REROLL_ATTEMPTS)
+      expect(recovered).toBeCloseTo(target, 3)
+    }
+  })
+
+  it('is monotonically increasing - a higher target always needs a higher per-draw rate', () => {
+    const targets = [0.05, 0.1, 0.2, 0.33, 0.5, 0.7, 0.9]
+    const rates = targets.map((t) => requiredPerDrawRate(t))
+    for (let i = 1; i < rates.length; i++) {
+      expect(rates[i]).toBeGreaterThan(rates[i - 1])
+    }
+  })
+
+  it('clamps the trivial edges: 0 stays 0, 1 (or above) stays 1', () => {
+    expect(requiredPerDrawRate(0)).toBe(0)
+    expect(requiredPerDrawRate(1)).toBe(1)
   })
 })
 
@@ -347,10 +467,9 @@ describe('pickNext - back-to-back strict-banned picks and the reroll cap', () =>
     // for the roll). backToBack is true on attempts 1-3 (each rerolled)
     // and attempt 4 is accepted unconditionally.
     //
-    // Only one bag exists now (bagStar is unreachable - starredIds
-    // defaults to [], so starEligible is false and `useStarred` short-
-    // circuits before ever calling Math.random, unlike the old bagA/bagB
-    // choice which spent a random() call every attempt).
+    // Only one bag exists now, and no starredIds are passed, so there's no
+    // bag-selection random() call at all here (unlike the old bagA/bagB
+    // choice, which spent a random() call every attempt).
     //
     // Call 1 left bagMain holding 1 leftover id (whichever of x/y wasn't
     // drawn) - call it `leftover`, and `first.variation.id` (== this
@@ -415,19 +534,22 @@ describe('pickNext - muting', () => {
   })
 
   it('computes bannedRollRate over the unmuted set, not the full dataset', () => {
-    // 10 synthetic entries, exactly 2 sideshowBanned: true - the strict
-    // share alone already hits TARGET_BANNED_SHARE (0.2), so
-    // bannedRollRate on the FULL list is 0 (shortfall clamps to 0, no
-    // extra roll needed or possible). Muting away those exact 2 strict
-    // entries removes the strict share entirely; if the roll rate is
-    // correctly recomputed over the remaining 8 (all sideshowBanned:
-    // false), it should roll back up to ~20% via the coin flip instead.
-    // A bug that kept computing the rate from the full, unfiltered list
-    // would see this stay at ~0%.
-    const strictIds = ['s1', 's2']
+    // 10 synthetic entries, exactly 5 sideshowBanned: true - the strict
+    // share alone (50%) already exceeds the per-draw rate
+    // requiredPerDrawRate(TARGET_BANNED_SHARE) needs (~47%, since the
+    // reroll's suppression means the raw 33% target itself isn't the
+    // per-draw threshold - see requiredPerDrawRate()), so bannedRollRate
+    // on the FULL list is 0 (shortfall clamps to 0, no extra roll needed
+    // or possible). Muting away those exact 5 strict entries removes the
+    // strict share entirely; if the roll rate is correctly recomputed
+    // over the remaining 5 (all sideshowBanned: false), it should roll
+    // back up to ~33% via the coin flip instead. A bug that kept
+    // computing the rate from the full, unfiltered list would see this
+    // stay at ~0%.
+    const strictIds = ['s1', 's2', 's3', 's4', 's5']
     const synthetic = [
       ...strictIds.map((id) => ({ id, sideshowBanned: true })),
-      ...Array.from({ length: 8 }, (_, i) => ({ id: `f${i}`, sideshowBanned: false })),
+      ...Array.from({ length: 5 }, (_, i) => ({ id: `f${i}`, sideshowBanned: false })),
     ]
     expect(bannedRollRate(synthetic)).toBe(0)
 
@@ -442,8 +564,8 @@ describe('pickNext - muting', () => {
       previousId = variation.id
     }
     const share = bannedCount / trials
-    expect(share).toBeGreaterThan(0.15)
-    expect(share).toBeLessThan(0.25)
+    expect(share).toBeGreaterThan(0.28)
+    expect(share).toBeLessThan(0.38)
   })
 })
 
@@ -486,11 +608,13 @@ describe('pickNext - the mute floor (MIN_UNMUTED)', () => {
 })
 
 describe('pickNext - starring', () => {
-  it('a single starred twist never repeats back-to-back (starEligible gate holds)', () => {
-    // With only 1 eligible starred id, bagStar can never be drawn from at
-    // all (starEligible requires >= 2) - this pins that the pre-roll
-    // really is skipped outright, not just "less likely": without that
-    // gate, a lone starred id's bag would legally repeat itself.
+  it('a single starred twist never repeats back-to-back (no starEligible floor anymore)', () => {
+    // The old bagStar design needed >= 2 starred ids (an isolated 1-member
+    // exclusive bag couldn't ever avoid repeating itself). Starring now
+    // just duplicates the id inside the much larger bagMain, so a single
+    // starred id has plenty of other ids for drawFrom()'s previousId swap
+    // to use - this pins that the guarantee holds uniformly, including at
+    // exactly 1 starred id.
     const starredIds = [variations[0].id]
     let previousId
     for (let i = 0; i < 2000; i++) {
@@ -502,70 +626,106 @@ describe('pickNext - starring', () => {
     }
   })
 
-  it('draws a starred id at roughly STARRED_SHARE (0.3) when at least 2 are eligible', () => {
-    const starredIds = variations.slice(0, 2).map((v) => v.id)
-    const starredSet = new Set(starredIds)
+  it('draws a starred id roughly STARRED_MULTIPLIER (2) times as often as a plain id', () => {
+    const starredId = variations[0].id
+    const plainId = variations[1].id
     let starredCount = 0
+    let plainCount = 0
     let previousId
-    const trials = 6000
+    const trials = 8000
     for (let i = 0; i < trials; i++) {
-      const { variation } = pickNext(variations, previousId, { starredIds })
-      if (starredSet.has(variation.id)) starredCount++
+      const { variation } = pickNext(variations, previousId, { starredIds: [starredId] })
+      if (variation.id === starredId) starredCount++
+      if (variation.id === plainId) plainCount++
       previousId = variation.id
     }
-    const share = starredCount / trials
-    // STARRED_SHARE (0.3) is a private constant, hardcoded here as a
-    // literal - same convention as TARGET_BANNED_SHARE's 0.2 elsewhere in
-    // this file. The true share is slightly ABOVE 0.3: a starred id can
-    // also be drawn via the ordinary bagMain path on the ~70% of attempts
-    // the starred pre-roll misses. The tolerance band is wide enough to
-    // absorb that plus statistical noise without masking a real
-    // regression (e.g. the pre-roll not firing at all, which would drop
-    // this down to each item's tiny natural bagMain share instead).
-    expect(share).toBeGreaterThan(0.25)
-    expect(share).toBeLessThan(0.45)
+    const ratio = starredCount / plainCount
+    // STARRED_MULTIPLIER (2) is a private constant, hardcoded here as a
+    // literal - same convention as TARGET_BANNED_SHARE elsewhere in this
+    // file. Observed ~1.9-2.1 in practice; the tolerance band is wide
+    // enough to absorb statistical noise without masking a real
+    // regression (e.g. the duplicate slot not being added at all, which
+    // would push this ratio down toward 1).
+    expect(ratio).toBeGreaterThan(1.6)
+    expect(ratio).toBeLessThan(2.4)
+  })
+
+  it('starring multiple ids does not dilute each one\'s individual boost', () => {
+    // Unlike the old bagStar design - a flat ~30% pre-roll SHARED across
+    // however many ids were starred, so each individual starred id's
+    // share shrank as more things got starred - duplicating in place
+    // gives each starred id its own fixed STARRED_MULTIPLIER slots,
+    // independent of how many other ids are also starred.
+    const starredIds = variations.slice(0, 2).map((v) => v.id)
+    const plainId = variations[2].id
+    const counts = new Map()
+    let previousId
+    const trials = 8000
+    for (let i = 0; i < trials; i++) {
+      const { variation } = pickNext(variations, previousId, { starredIds })
+      counts.set(variation.id, (counts.get(variation.id) ?? 0) + 1)
+      previousId = variation.id
+    }
+    const plainCount = counts.get(plainId) ?? 0
+    for (const starredId of starredIds) {
+      const ratio = (counts.get(starredId) ?? 0) / plainCount
+      expect(ratio).toBeGreaterThan(1.6)
+      expect(ratio).toBeLessThan(2.4)
+    }
   })
 })
 
-describe('pickNext - a stale persisted bagStarSource is dropped and reshuffled', () => {
-  it('drops a persisted bagStar whose bagStarSource no longer matches the live starred set', () => {
-    const starredIds = variations.slice(0, 3).map((v) => v.id) // >= 2, satisfies starEligible
-    localStorage.setItem(
-      STATE_KEY,
-      JSON.stringify({
-        bagMain: [],
-        bagStar: [starredIds[0]], // plausible but stale 1-element "remaining" pool
-        lastBanned: null,
-        bagMainSource: variations.map((v) => v.id),
-        bagStarSource: ['some-completely-different-stale-id'], // mismatched -> drop
-      }),
-    )
+describe('pickNext - short-session characterization: starring no longer pathologically concentrates draws', () => {
+  // A user reported seeing one twist come up several times in a session
+  // while several others never showed at all. That traced back to the old
+  // bagStar design's flat ~30% pre-roll, which made starring even 1-2
+  // twists swallow up roughly a third of EVERY draw regardless of bag
+  // size. STARRED_MULTIPLIER's per-cycle duplication (see pick.js) fixes
+  // this: a starred id can appear at most STARRED_MULTIPLIER times before
+  // bagMain's own cycle - not just any short session - forces a reshuffle.
+  // Pinned here as a session-level regression check.
+  const SESSION_DRAWS = 15 // a plausible manual-testing session length
+  const SESSIONS = 300
+  const starredIds = variations.slice(0, 2).map((v) => v.id)
 
-    // Force useStarred === true every attempt (starEligible is true here,
-    // and 0.01 < STARRED_SHARE 0.3).
-    vi.spyOn(Math, 'random').mockReturnValue(0.01)
+  function runSession(draws, opts) {
+    sessionStorage.clear()
+    const counts = new Map()
+    let previousId
+    for (let i = 0; i < draws; i++) {
+      const { variation } = pickNext(variations, previousId, opts)
+      counts.set(variation.id, (counts.get(variation.id) ?? 0) + 1)
+      previousId = variation.id
+    }
+    return counts
+  }
 
-    pickNext(variations, undefined, { starredIds })
-
-    const written = JSON.parse(localStorage.getItem(STATE_KEY))
-    // A correctly-dropped bag reshuffles all of starredIds and pops one,
-    // leaving starredIds.length - 1. A wrongly-reused stale pool
-    // (length 1) would leave 0.
-    expect(written.bagStar).toHaveLength(starredIds.length - 1)
+  it('with no stars, a 15-draw session essentially never repeats any single id 3+ times', () => {
+    // bagMain structurally cycles through (nearly) all 32 ids before
+    // repeating any (see the "cycles through nearly all members" describe
+    // block above) - 15 draws can't exhaust enough of a 32-id bag to loop
+    // back around, so a 3x-in-15 repeat should be effectively unseen.
+    let sessionsWithTripleRepeat = 0
+    for (let s = 0; s < SESSIONS; s++) {
+      const counts = runSession(SESSION_DRAWS, {})
+      if (Math.max(...counts.values()) >= 3) sessionsWithTripleRepeat++
+    }
+    expect(sessionsWithTripleRepeat).toBeLessThanOrEqual(1)
   })
 
-  it('falls back cleanly when bagStar/bagStarSource are absent entirely from a persisted blob', () => {
-    localStorage.setItem(
-      STATE_KEY,
-      JSON.stringify({
-        bagMain: [],
-        lastBanned: null,
-        bagMainSource: variations.map((v) => v.id),
-        // no bagStar / bagStarSource
-      }),
-    )
-    const starredIds = variations.slice(0, 2).map((v) => v.id)
-    expect(() => pickNext(variations, undefined, { starredIds })).not.toThrow()
+  it('starring 2 of 32 ids ALSO essentially never repeats any single id 3+ times in a short session', () => {
+    // Each starred id only has 2 copies total in bagMain's source list
+    // (STARRED_MULTIPLIER), both consumed within the SAME cycle - so a
+    // 15-draw session (well under one full cycle) can show a starred id
+    // at most twice, same structural ceiling as the no-star baseline
+    // above. Observed 0/500 sessions with a 3x+ repeat, max ever 2, when
+    // this was verified against the live implementation.
+    let sessionsWithTripleRepeat = 0
+    for (let s = 0; s < SESSIONS; s++) {
+      const counts = runSession(SESSION_DRAWS, { starredIds })
+      if (Math.max(...counts.values()) >= 3) sessionsWithTripleRepeat++
+    }
+    expect(sessionsWithTripleRepeat).toBeLessThanOrEqual(1)
   })
 })
 

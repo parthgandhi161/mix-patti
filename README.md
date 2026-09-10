@@ -132,11 +132,14 @@ src/
     pick.js                   random pick, never the same twist twice in a
                               row - now also starring (drawn more often)
                               and muting (never drawn) layered on top; see
-                              the file's own JSDoc for the bagMain/bagStar
-                              design and the MIN_UNMUTED floor
-    storage.js                shared localStorage get/set (raw string +
-                              JSON), used by pick.js, useMuted.js and
-                              useVariationPrefs.js
+                              the file's own JSDoc for the single-bagMain
+                              design (starring just duplicates an id in
+                              the bag) and the MIN_UNMUTED floor. Its own
+                              draw state persists to sessionStorage (fresh
+                              on every app reopen), not localStorage.
+    storage.js                shared localStorage/sessionStorage get/set
+                              (raw string + JSON), used by pick.js,
+                              useMuted.js and useVariationPrefs.js
     summary.js                builds the Deal / Win / Twist result badges
     timing.js                 the mix timeline (single source of truth)
     sound.js                  desi percussion, synthesised with Web Audio;
