@@ -16,10 +16,11 @@ client-side static React, deployed as a static site to GitHub Pages.
   mixing carousel, sheet slide-up).
 - `oxlint` for linting (`npm run lint`) and `vitest` for unit tests
   (`npm test`) - both run in CI (`.github/workflows/deploy.yml`) before
-  every deploy build. Playwright is a `devDependency` too, but purely for
-  the committed manual visual-verification harness in `scripts/` (see
-  README's "Visual checks with Playwright") - it isn't wired into CI,
-  only `oxlint`/`vitest` are.
+  every deploy build. Playwright backs two separate things, neither wired
+  into CI (only `oxlint`/`vitest` are - see "Testing" below for why):
+  `e2e/*.spec.js`, a real assertion-based suite (`npm run test:e2e`), and
+  the older committed manual visual-verification harness in `scripts/`
+  (see README's "Visual checks with Playwright") - don't confuse the two.
 - Fonts (Baloo Bhaijaan 2, Baloo 2) are self-hosted as woff2 in
   `public/fonts/`, declared via `@font-face` in `src/styles/global.css` -
   not loaded from Google Fonts at runtime.
@@ -47,15 +48,71 @@ npm run dev      # http://localhost:5173/mix-patti/
 npm run build    # production build into dist/
 npm run lint      # oxlint
 npm test         # vitest (src/lib unit tests)
+npm run test:e2e # playwright (e2e/ - real-browser assertions)
+npm run test:all # lint + npm test + test:e2e, one command - run this
+                 # before every commit (see "Testing" below)
 npm run preview  # serve the production build locally
 ```
 
 `npm run lint`, `npm test`, and `npm run build` all run in CI
 (`.github/workflows/deploy.yml`) before every GitHub Pages deploy - a
 broken lint/test/build fails the `build` job and blocks `deploy` (which
-`needs: build`), so nothing broken reaches production. Still run all
-three locally after any non-trivial change - CI catching it is a safety
-net, not a substitute for a fast local loop.
+`needs: build`), so nothing broken reaches production. `test:e2e` does
+NOT run in CI (kept out deliberately - see "Testing" below), so it's on
+you (or whichever agent is working here) to run it locally; still run all
+of lint/test/build after any non-trivial change even though CI also
+checks them - CI catching it is a safety net, not a substitute for a fast
+local loop.
+
+## Testing
+
+Two committed suites - **when you add a new feature or change
+user-visible behavior, add or update a test for it in the SAME change,
+then run `npm run test:all` before committing.** Don't treat this as
+optional polish; a change without a test for it is not done. If you're
+unsure whether something needs one, default to adding it - see the two
+conventions below for where it goes.
+
+- **Unit tests** (`src/lib/*.test.js`, vitest, `npm test`): for pure logic
+  in `src/lib`. The existing convention (`pick.test.js`, `usePlayers.test.js`,
+  `judge/*.test.js`, `storage.test.js`, `summary.test.js`,
+  `useVariationPrefs.test.js`) is to test EXPORTED PURE FUNCTIONS, not to
+  mount React components or hooks - `vitest.config.js` deliberately runs
+  with `environment: 'node'` and no `@testing-library/react`, so there's
+  no DOM and no hook-rendering harness. When a hook's logic is worth
+  covering and isn't trivial (see `usePlayers.js`'s
+  `nextDealerIndexAfterRemoval`/`nextDealerIndexAfterMove` and
+  `useVariationPrefs.js`'s `canToggleMuteId`/`sanitizeIdList`), extract it
+  as a standalone exported function the hook calls internally, and test
+  that function directly - don't reach for a DOM-rendering library to
+  test a hook in place. A hook that's pure persistence glue around
+  `useState`/`useEffect` with no interesting branching (`useMuted.js`,
+  `useReadingMode.js`) doesn't need its own unit test - its behavior is
+  covered by the e2e suite instead (e.g. `e2e/header.spec.js`'s mute
+  toggle reload-persistence test).
+- **End-to-end tests** (`e2e/*.spec.js`, Playwright's own test runner via
+  `@playwright/test`, `npm run test:e2e`): for anything that needs the
+  real running app - a new screen/sheet, a new user flow, state that
+  round-trips through `localStorage`, anything wiring a component to a
+  `src/lib` hook. `playwright.config.js` auto-manages the dev server (no
+  need to have `npm run dev` already running first), defaults to
+  `devices['iPhone 13']` forced to Chromium (see the Playwright note
+  further down for why the device emulation matters, and why Chromium -
+  this repo only installs that one browser binary), and most specs ask
+  for `prefers-reduced-motion` via `e2e/helpers.js`'s `gotoApp()` - which
+  `Mixing.jsx`/`Result.jsx` already honor by skipping their theatrical
+  animations (see "Respect prefers-reduced-motion" below), so this is
+  real, already-existing behavior being exercised, not a test-only
+  bypass. Only skip it (as `e2e/home-to-result.spec.js`'s chrome-dim test
+  does) when the animation/timing itself is what's under test. Kept
+  deliberately OUT of CI, same reasoning as the older `scripts/`
+  Playwright harness: CI here gates a static-site deploy and stays fast;
+  this suite is the local pre-commit gate instead (`npm run test:all`).
+  This is separate from `scripts/shot.mjs`/`scripts/offline-check.mjs`
+  (README's "Visual checks with Playwright") - those are a
+  screenshot/measurement harness with no pass/fail assertions, still
+  useful for eyeballing layout/animation, not a substitute for `e2e/`'s
+  assertions and not the other way around.
 
 ## Architecture
 
@@ -288,9 +345,12 @@ See the README's "Layout" section for the full file-by-file map.
   to count constructions/`close()`s and created source nodes, override
   `document.visibilityState` and dispatch `visibilitychange` to fake a
   background/foreground cycle, then assert that live contexts never
-  exceed 1 and that every mix after a cycle still creates nodes. Real
-  confirmation needs a device: background the iOS PWA for a minute, come
-  back, mix.
+  exceed 1 and that every mix after a cycle still creates nodes. This is
+  exactly what `e2e/audio-lifecycle.spec.js` already automates as part of
+  `npm run test:e2e` - extend that spec rather than starting a new
+  throwaway script if `sound.js`'s lifecycle logic changes. Real
+  confirmation still needs a device for anything beyond that proxy:
+  background the iOS PWA for a minute, come back, mix.
 
 ## Deployment
 

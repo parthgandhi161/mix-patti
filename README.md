@@ -15,6 +15,47 @@ npm run preview  # serve the production build locally
 The dev URL includes `/mix-patti/` because `base` is set for GitHub Pages
 (see below). That's expected.
 
+## Testing
+
+Two suites, both committed (nothing to write from scratch per change):
+
+```bash
+npm test              # vitest - unit tests for src/lib's pure logic
+npm run test:e2e      # playwright - real-browser assertions against the
+                       # actual running app (see e2e/)
+npm run test:all      # lint + both suites, one command - run this before
+                       # every commit
+```
+
+`test:e2e` manages its own dev server (`playwright.config.js`'s
+`webServer`) - it starts `npm run dev` if nothing is already listening on
+5173 and reuses it otherwise, so a plain `npm run test:e2e` (or
+`test:all`) works standalone with nothing else running first. It emulates
+`devices['iPhone 13']` for the same reason `scripts/shot.mjs` does (see
+below) and asks for `prefers-reduced-motion` in most specs, since
+`src/components/Mixing.jsx`/`Result.jsx` already skip their theatrical
+animations for that preference - real code, not a test-only shortcut - so
+the suite runs in ~30s instead of minutes of shuffle animation.
+
+One-time per machine, same as "Visual checks with Playwright" below (both
+share the one browser binary, kept at the same version in `package.json`):
+
+```bash
+npx playwright install chromium
+```
+
+`npm test` and `npm run lint` gate every deploy in CI
+(`.github/workflows/deploy.yml`); `test:e2e` does not (see "Visual checks
+with Playwright" below for why Playwright as a whole stays out of CI) -
+run `test:all` locally before pushing instead.
+
+**Whenever you add a new feature or user-visible behavior, add a test for
+it in the same change**: a unit test in `src/lib/*.test.js` for new pure
+logic, an e2e spec in `e2e/*.spec.js` for new UI/flows, or both - then run
+`npm run test:all` before committing. See CLAUDE.md's Architecture section
+for the project's existing testing conventions (what gets a unit test vs.
+what's better covered by e2e).
+
 ## Deploying
 
 `vite.config.js` sets `base: '/mix-patti/'` so built asset URLs resolve at
@@ -42,10 +83,12 @@ hand.
 
 ## Visual checks with Playwright
 
-Playwright is a `devDependency`. `scripts/shot.mjs` (plus
-`scripts/offline-check.mjs` for the offline case) is a small committed
-harness around it - not a test suite, and not wired into CI (only
-`npm run lint` and `npm test` gate the deploy, see CLAUDE.md) - for
+Playwright backs two different things in this repo - don't confuse them:
+`e2e/` (see "Testing" above) is a real pass/fail assertion suite; this
+section's `scripts/shot.mjs` (plus `scripts/offline-check.mjs` for the
+offline case) is a separate, smaller committed harness with no
+assertions - not wired into CI either (only `npm run lint`, `npm test`
+and `npm run build` gate the deploy, see CLAUDE.md) - for
 screenshotting the mix animation (shuffle → carousel → land), mobile
 layout, etc. in headless Chromium instead of eyeballing `npm run dev` by
 hand.

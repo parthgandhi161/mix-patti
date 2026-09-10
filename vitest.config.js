@@ -10,5 +10,9 @@ export default defineConfig({
     environment: 'node', // no DOM needed - pick.js only touches
                           // localStorage and Math.random as globals
     setupFiles: ['./test/setup.js'],
+    // e2e/*.spec.js are Playwright tests (npm run test:e2e), not
+    // Vitest's - vitest's default include glob matches *.spec.js too,
+    // so without this it tries (and fails) to run them here as well.
+    exclude: ['e2e/**', 'node_modules/**'],
   },
 })

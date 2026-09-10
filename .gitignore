@@ -16,6 +16,13 @@ dist-ssr
 # scripts/baseline.json is the committed reference, this dir is not.
 scripts/output/
 
+# Playwright e2e suite (npm run test:e2e) - failure traces/screenshots and
+# the HTML report, regenerated on every run.
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

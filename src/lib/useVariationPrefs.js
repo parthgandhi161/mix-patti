@@ -10,9 +10,24 @@ const MUTED_KEY = 'mixpatti.mutedVariations'
 // (excluded from the draw) that happens to share the English word.
 
 /** Guards a persisted id-array against corruption - same role as pick.js's readState(). */
-function sanitizeIdList(stored) {
+export function sanitizeIdList(stored) {
   if (!Array.isArray(stored)) return []
   return stored.filter((id) => typeof id === 'string')
+}
+
+/**
+ * Whether `id` may be (un)muted, given the CURRENT mutedIds and the total
+ * variation count - extracted as a pure function (rather than left inline
+ * in the hook below) so it can be unit tested directly, the same way
+ * usePlayers.js pulls its dealer-index arithmetic out into standalone
+ * exports. Mirrors pick.js's effectiveMutedSet() floor: unmuting is
+ * always allowed, muting one more is only allowed while more than
+ * MIN_UNMUTED would remain unmuted afterward.
+ */
+export function canToggleMuteId(id, mutedIds, totalCount) {
+  if (mutedIds.includes(id)) return true
+  const unmutedCount = totalCount - mutedIds.length
+  return unmutedCount > MIN_UNMUTED
 }
 
 /**
@@ -47,11 +62,7 @@ export function useVariationPrefs(variations) {
   const isMuted = useCallback((id) => mutedIds.includes(id), [mutedIds])
 
   const canToggleMute = useCallback(
-    (id) => {
-      if (mutedIds.includes(id)) return true // unmuting is always allowed
-      const unmutedCount = variations.length - mutedIds.length
-      return unmutedCount > MIN_UNMUTED
-    },
+    (id) => canToggleMuteId(id, mutedIds, variations.length),
     [variations, mutedIds],
   )
 
