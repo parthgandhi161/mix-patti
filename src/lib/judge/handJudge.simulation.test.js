@@ -131,6 +131,12 @@ describe('randomized simulation (seeded, deterministic)', () => {
   const rng = mulberry32(20260910)
   const TRIALS = 300
 
+  // Explicit timeout: this trades ~4-9s of `npm test` time for real
+  // coverage (worst-case joker wild-search is O(52^3) per hand) - well
+  // under vitest's default 5000ms locally, but GitHub Actions' shared
+  // runners are slower and blew past it (CI failed here even though
+  // every assertion passed - it was purely the clock). 20s leaves
+  // comfortable headroom without hiding a genuine hang.
   it(`holds invariants across ${TRIALS} random deals, both modes`, () => {
     for (let trial = 0; trial < TRIALS; trial++) {
       const { hand1, hand2 } = dealScenario(rng)
@@ -170,5 +176,5 @@ describe('randomized simulation (seeded, deterministic)', () => {
         expect(swapped.decidedBy).toBe(result.decidedBy)
       }
     }
-  })
+  }, 20000)
 })
