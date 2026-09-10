@@ -750,6 +750,74 @@
   white-space: nowrap;
 }
 
+/* Verdict only: two entered rows, up to two converted rows, and the
+   winner banner all have to fit above the fold with no scrolling on a
+   real phone - confirmed overflowing by 150px+ on an iPhone 15 Pro Max
+   viewport when both hands convert via a joker (the entry form has no
+   converted rows and already fits with nothing to spare, so it's left
+   alone). Every rule below only narrows spacing/sizing already set
+   above - the entered card is the single biggest element on the screen
+   (unbounded flex:1 sizing made it ~165px tall on a 430px-wide phone),
+   so capping its width is what actually recovers the space; the rest is
+   gap/margin trims. */
+.handJudgeSheet__body--verdict {
+  /* Not space-between (the base rule): once the entered card was capped
+     below, this screen's content is comfortably shorter than the sheet
+     on every phone this was tested against - space-between would spend
+     that slack as one huge gap on either side of .midZone instead of
+     reading as one composed card, which looked broken, not spacious.
+     Not `center` either - .sheet__body is a scrolling container
+     (overflow-y: auto), and centering overflowing flex content pushes
+     the excess past the START edge, which Chromium then treats as
+     unreachable/unscrollable rather than adding it to scrollHeight. A
+     pathological hand (both sides converting via a joker) can still
+     overflow on the smallest supported phone (iPhone SE) - flex-start
+     keeps that overflow, if it happens, an ordinary reachable scroll
+     instead of silently clipping content off the top. */
+  justify-content: safe center;
+  gap: 10px;
+}
+
+.handJudgeSheet__body--verdict .handJudgeSheet__handBlock {
+  gap: 5px;
+}
+
+.handJudgeSheet__body--verdict .handJudgeSheet__handRow {
+  justify-content: center;
+  padding: 4px;
+  margin: 1px 0;
+}
+
+.handJudgeSheet__body--verdict .handJudgeSheet__handRow .playingCard {
+  max-width: 70px;
+}
+
+.handJudgeSheet__body--verdict .handJudgeSheet__convertedLabel {
+  margin: 2px 0;
+}
+
+.handJudgeSheet__body--verdict .handJudgeSheet__convertedRow {
+  gap: 6px;
+}
+
+.handJudgeSheet__body--verdict .playingCard--mini {
+  max-width: 38px;
+}
+
+.handJudgeSheet__body--verdict .handJudgeSheet__midZone {
+  gap: 6px;
+}
+
+.handJudgeSheet__body--verdict .handJudgeSheet__winner {
+  font-size: 19px;
+  margin-top: -1px;
+}
+
+.handJudgeSheet__body--verdict .handJudgeSheet__midBtn {
+  min-height: 40px;
+  padding: 9px 10px;
+}
+
 /* The bottom-drawer flow for filling one card: rank -> suit -> (always)
    joker?, auto-advancing to the next empty slot. Positioned against
    .sheet (already `position: absolute`), same as Result.css's own

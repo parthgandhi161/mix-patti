@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, devices } from '@playwright/test'
 import { gotoApp, mix } from './helpers.js'
 
 /** Opens the next empty slot's drawer (rank -> suit -> normal/joker) and commits one card. */
@@ -106,5 +106,44 @@ test.describe('HandJudgeSheet', () => {
     await page.getByRole('button', { name: 'Close hand judge' }).click()
     await expect(page.locator('.sheet__title')).toBeHidden()
     await expect(page.getByRole('button', { name: 'Mix again' })).toBeVisible()
+  })
+
+  test('the verdict fits on one screen on an iPhone 15 Pro Max, no scrolling', async ({ browser }) => {
+    // Own context, deliberately not the iPhone 13 device this config
+    // defaults to - see FullscreenToggle's own "own context" test above
+    // for the same pattern. This is the exact device + scenario that
+    // used to overflow .sheet__body by 150px+: both hands tagged so
+    // BOTH convert via a joker (the tallest the verdict can render -
+    // two converted-hand rows on top of the two entered rows), which is
+    // what pushed the entered card's old unbounded flex:1 sizing (and
+    // the space it left for two more rows) past one screen. See
+    // Sheet.css's own ".handJudgeSheet__body--verdict" comment for why
+    // the fix caps the entered card's width instead of just tightening
+    // gaps, and why it's `justify-content: safe center`, not `center`.
+    const context = await browser.newContext({ ...devices['iPhone 15 Pro Max'] })
+    const page = await context.newPage()
+    await gotoApp(page)
+    await mix(page)
+    await page.getByRole('button', { name: 'Compare hands' }).click()
+    await page
+      .locator('.handJudgeSheet__handBlock', { hasText: 'Hand 1' })
+      .getByRole('button', { name: 'Empty card, tap to fill' })
+      .first()
+      .click()
+    await fillNextSlot(page, 'K', 'S')
+    await fillNextSlot(page, 'K', 'H')
+    await fillNextSlot(page, '9', 'D', { joker: true })
+    await fillNextSlot(page, '9', 'S')
+    await fillNextSlot(page, '9', 'C')
+    await fillNextSlot(page, '7', 'H', { joker: true })
+    await page.getByRole('button', { name: 'Judge', exact: true }).click()
+    await expect(page.locator('.handJudgeSheet__winner')).toBeVisible()
+
+    const overflow = await page.evaluate(() => {
+      const body = document.querySelector('.sheet__body')
+      return body.scrollHeight - body.clientHeight
+    })
+    expect(overflow).toBeLessThanOrEqual(0)
+    await context.close()
   })
 })
