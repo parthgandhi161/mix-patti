@@ -14,8 +14,7 @@
     "winner": "Best standard hand. Trail > Pure sequence > Sequence > Colour > Pair > High card",
     "notes": "The baseline. Good default when nobody wants a twist.",
     "priority": 1,
-    "sideshowBanned": false,
-    "judge": { "ranking": "standard" }
+    "sideshowBanned": false
   },
   {
     "id": "ak47",
@@ -32,8 +31,7 @@
     "winner": "Best standard hand",
     "notes": "16 jokers in the deck. Trails and pure sequences are common, hand values run high.",
     "priority": 1,
-    "sideshowBanned": false,
-    "judge": { "jokers": [{ "source": "fixedRanks", "ranks": ["A", "K", "4", "7"] }] }
+    "sideshowBanned": false
   },
   {
     "id": "char-sau-bees",
@@ -50,8 +48,7 @@
     "winner": "Closest to 420 wins, over or under",
     "notes": "Sister game to 999 but less obvious, since going past 420 is possible. More thinking, more arguing.",
     "priority": 1,
-    "sideshowBanned": false,
-    "judge": { "ranking": "closest-to-420" }
+    "sideshowBanned": false
   },
   {
     "id": "chhota-joker",
@@ -69,8 +66,7 @@
     "winner": "Best standard hand",
     "notes": "If your lowest card is part of a pair, both become jokers, which usually means a trail.",
     "priority": 1,
-    "sideshowBanned": false,
-    "judge": { "jokers": [{ "source": "personalLowest" }] }
+    "sideshowBanned": false
   },
   {
     "id": "khula-joker",
@@ -90,8 +86,7 @@
     "winner": "Best standard hand",
     "notes": "The shared joker means everyone is on the same footing, unlike Chhota Joker.",
     "priority": 1,
-    "sideshowBanned": false,
-    "judge": { "jokers": [{ "source": "flippedRank" }] }
+    "sideshowBanned": false
   },
   {
     "id": "padosi",
@@ -108,8 +103,7 @@
     "winner": "Best standard hand",
     "notes": "The near-misses are the fun part. People realise their card was one rank off.",
     "priority": 1,
-    "sideshowBanned": false,
-    "judge": { "jokers": [{ "source": "flippedRankNeighbours" }] }
+    "sideshowBanned": false
   },
   {
     "id": "muflis",
@@ -128,8 +122,7 @@
     "winner": "Worst standard hand wins",
     "notes": "Messes with instincts hard. Agree upfront whether A-2-3 counts as a sequence.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "ranking": "muflis" }
+    "sideshowBanned": false
   },
   {
     "id": "gol-chakkar",
@@ -152,8 +145,7 @@
     "winner": "Best standard hand",
     "notes": "No blind here, you have to look at your hand to know what to pass, so everyone plays seen. With 6 players, what you send is genuinely gone until it comes all the way back around.",
     "priority": 2,
-    "sideshowBanned": true,
-    "judge": { "ranking": "standard" }
+    "sideshowBanned": true
   },
   {
     "id": "tukka",
@@ -173,8 +165,7 @@
     "winner": "Best standard hand",
     "notes": "You commit blind, so it is genuinely 50-50 whether it helps. Table reads get loud.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "jokers": [{ "source": "personalCalledRank" }] }
+    "sideshowBanned": false
   },
   {
     "id": "badalta-joker",
@@ -195,8 +186,7 @@
     "winner": "Best standard hand using whatever the final joker is",
     "notes": "Your hand goes from garbage to trail to garbage across three flips. Keep the cap or the round drags.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "jokers": [{ "source": "flippedRank" }] }
+    "sideshowBanned": false
   },
   {
     "id": "laal-kaali",
@@ -213,8 +203,7 @@
     "winner": "Best standard hand",
     "notes": "Almost everyone lands a trail. Peak chaos. The natural-beats-joker tiebreak matters most here.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "jokers": [{ "source": "flippedColour" }] }
+    "sideshowBanned": false
   },
   {
     "id": "beat-the-bitch",
@@ -235,8 +224,7 @@
     "winner": "The round winner takes the pot only if their hand beats the side hand. If the side hand wins or ties, nobody takes the pot and it rolls over into the next round",
     "notes": "Pot can roll over several rounds and get big. Decide upfront whether a tie counts as a loss (recommended: yes).",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "tieFavours": "hand2" }
+    "sideshowBanned": false
   },
   {
     "id": "bhoot-wale-patte",
@@ -257,8 +245,7 @@
     "winner": "The clean finalist wins automatically if the other is cursed. If both are clean, best standard hand wins. If both are cursed, the pot rolls into the next hand",
     "notes": "A trail of Aces can still lose if Aces turn out to be cursed. The best hand in the room can lose without a single comparison.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "curse": { "count": 2 } }
+    "sideshowBanned": false
   },
   {
     "id": "kismat-ka-jugad",
@@ -281,8 +268,7 @@
     "winner": "Best standard hand",
     "notes": "Paying double to sit in, then double again to fix your hand, is either smart play or a trap. Usually a trap.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "ranking": "standard" }
+    "sideshowBanned": false
   },
   {
     "id": "ek-aankh-khuli",
@@ -302,8 +288,7 @@
     "winner": "Best standard hand",
     "notes": "The only variation where you're reading the table instead of just your own hand. With 6 exposed cards out, a sharp player can rule out a lot before the first bet lands.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "ranking": "standard" }
+    "sideshowBanned": false
   },
   {
     "id": "boli-wale-joker",
@@ -325,10 +310,7 @@
     "winner": "Best standard hand. The bidder reveals their secret joker only if they reach the final show",
     "notes": "If nobody raises past the opening amount, whoever opened the bidding takes it at that price. The public joker is a blind gamble, the private one is a guaranteed edge, which is why the auction gets loud.",
     "priority": 2,
-    "sideshowBanned": true,
-    "judge": {
-      "jokers": [{ "source": "tableRank" }, { "source": "personalSecret", "scope": "hand1" }]
-    }
+    "sideshowBanned": true
   },
   {
     "id": "fast-fatka",
@@ -345,8 +327,7 @@
     "winner": "Best standard hand",
     "notes": "One slow player kills the pace for a 6-player table. Use it occasionally, not every hand, or people burn out.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "ranking": "standard" }
+    "sideshowBanned": false
   },
   {
     "id": "nikal-fenk",
@@ -366,8 +347,7 @@
     "winner": "Best standard hand",
     "notes": "Blind play is awkward here since you must look to discard. Usually everyone plays seen.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "ranking": "standard" }
+    "sideshowBanned": false
   },
   {
     "id": "jodi-bijodi",
@@ -387,8 +367,7 @@
     "winner": "Best hand made from your qualifying cards. Zero qualifying cards means you are out for the round",
     "notes": "Agree upfront where Ace sits. Most groups call it odd.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "filter": "dealer-declares" }
+    "sideshowBanned": false
   },
   {
     "id": "do-raja",
@@ -402,8 +381,7 @@
     "winner": "The best hand and the worst hand both win. Muflis ranking decides the worst",
     "notes": "Keeps people in longer since a garbage hand is still live. Works well with a large table.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "dualWinner": true }
+    "sideshowBanned": false
   },
   {
     "id": "jodi-joker",
@@ -420,8 +398,7 @@
     "winner": "Best standard hand",
     "notes": "Every pair silently upgrades to a trail. Half the table thinks they are unbeatable, then four trails hit the show at once.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "jokers": [{ "source": "conditionalPair" }] }
+    "sideshowBanned": false
   },
   {
     "id": "sabka-hissa",
@@ -441,8 +418,7 @@
     "winner": "Best standard hand using your best 3 of 4 cards",
     "notes": "The one variation where the dealer's flip helps the whole table instead of picking a winner or a victim.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "sharedCards": 1 }
+    "sideshowBanned": false
   },
   {
     "id": "999",
@@ -460,8 +436,7 @@
     "winner": "The player whose number is closest to 999 wins",
     "notes": "Some groups play 'closest to 999 or 111' so a terrible hand can also win. Decide before dealing.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "ranking": "closest-to-999" }
+    "sideshowBanned": false
   },
   {
     "id": "murda-patta",
@@ -482,8 +457,7 @@
     "winner": "Best standard hand using only your live cards",
     "notes": "The mirror image of Khula Joker. Instead of hoping you hold the flipped rank, you're praying you don't, since a pair of Kings turns into nothing if Kings just got declared dead.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "deadRank": "input" }
+    "sideshowBanned": false
   },
   {
     "id": "parda-faash",
@@ -504,8 +478,7 @@
     "winner": "Best standard hand",
     "notes": "Every other variation changes the hand itself. This one leaves the cards alone and stretches out the ending instead, so the finalists bet on a slowly unfolding picture instead of one blind flip.",
     "priority": 2,
-    "sideshowBanned": false,
-    "judge": { "ranking": "standard" }
+    "sideshowBanned": false
   },
   {
     "id": "haath-ka-kachra",
@@ -529,8 +502,7 @@
     "winner": "Best standard hand using the 3 joker ranks as wild",
     "notes": "Up to 12 cards can be wild at once, so hands run big. What you reject early can end up deciding everyone's hand once it hits the joker draw.",
     "priority": 2,
-    "sideshowBanned": true,
-    "judge": { "jokers": [{ "source": "multiRank", "count": 3 }] }
+    "sideshowBanned": true
   },
   {
     "id": "ek-se-badhkar-ek",
@@ -548,6 +520,71 @@
     ],
     "winner": "Highest single card revealed, among players who stayed in. Exact ties (same rank) split the pot evenly",
     "notes": "Simulated at 6 players: every seat wins almost exactly 1 in 6 times, genuinely seat-blind, since everyone reveals together instead of taking turns against a moving target. Average pot lands around 13 counters. About 1 in 7 rounds ends in a tie for the top card. The real decision each round is whether to keep paying to chase the lead or lock in what you've got, that's where the skill lives now, not turn order luck.",
+    "priority": 2,
+    "sideshowBanned": true
+  },
+  {
+    "id": "bidai-wale-joker",
+    "name": "Bidai Wale Joker",
+    "alsoKnownAs": ["Vidai Wale Joker", "The Farewell Joker", "Packer's Gift"],
+    "cardsPerPlayer": 3,
+    "tableCards": 1,
+    "joker": "The middle card's rank to start, then the open card of whoever packed most recently",
+    "setup": [
+      "Flip 1 card face up in the middle. That rank is the opening joker for everyone",
+      "Deal 3 cards to each player, 2 face down and 1 face up in front of them"
+    ],
+    "play": [
+      "Every player's open card stays visible all round, so the table can see exactly which jokers are waiting to come",
+      "The moment a player packs, their open card's rank becomes the new joker and the previous one goes dead",
+      "Every pack replaces the joker again, so whatever the last packer showed is what stands at the show",
+      "Your own 3 cards are your hand. The middle card only sets the opening joker, it is never part of anyone's hand"
+    ],
+    "winner": "Best standard hand using whatever the live joker is at the show",
+    "notes": "Packing stops being a quiet exit, you hand the table a joker on the way out. Since every open card is visible, folding early means giving away the joker everyone could already see you were sitting on.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "antim-faisla",
+    "name": "Antim Faisla",
+    "alsoKnownAs": ["The Final Verdict", "Rang Ka Faisla", "Palti Patta"],
+    "cardsPerPlayer": 3,
+    "tableCards": 1,
+    "joker": null,
+    "setup": [
+      "Place 1 card face down in the middle before dealing. Nobody looks at it",
+      "Deal 3 cards face down to each player"
+    ],
+    "play": [
+      "Play a fully normal round, betting and folding as usual",
+      "Nobody knows which direction the hand will be scored while the money is going in",
+      "At the show, flip the middle card"
+    ],
+    "winner": "Red card means normal ranking and the best hand wins. Black card means Muflis, and the worst hand wins instead",
+    "notes": "The only twist where you bet a hand you cannot classify yet. A trail is either the best hand at the table or the worst one, and you find out after the last rupee is in.",
+    "priority": 2,
+    "sideshowBanned": false
+  },
+  {
+    "id": "shun-chekdi",
+    "name": "Shun Chekdi",
+    "alsoKnownAs": ["Shunya Chokdi", "Noughts and Crosses", "Cross Ya Plus", "The Grid"],
+    "cardsPerPlayer": 3,
+    "tableCards": 9,
+    "joker": "Five ranks per player, either the X or the + of the grid, chosen privately",
+    "setup": [
+      "Lay 9 cards face up in a 3x3 grid in the middle",
+      "Deal 3 cards face down to each player"
+    ],
+    "play": [
+      "Each player picks one shape from the grid: the X (four corners plus the centre) or the + (middle row plus middle column)",
+      "All 5 ranks in your chosen shape are wild for you only",
+      "You never announce your choice and you can settle on it whenever you like, before or after looking at your hand",
+      "The centre card belongs to both shapes, so that rank is wild for everyone no matter what"
+    ],
+    "winner": "Best standard hand using your chosen shape as jokers",
+    "notes": "Simulated at 6 players picking their better shape: about 37% of hands land a trail, but 1 in 6 still gets no joker at all from either shape. The grid is public and the choice is private, so the reading happens on the table, not in your hand.",
     "priority": 2,
     "sideshowBanned": true
   }
