@@ -38,6 +38,22 @@ export function resolveWildness(cards, jokerConfigs = [], extras = {}, side) {
         break
       }
 
+      case 'personalHighest': {
+        const highest = Math.max(...cards.map((c) => rankValue(c.rank)))
+        mark((c) => rankValue(c.rank) === highest)
+        break
+      }
+
+      case 'fixedSuits':
+        mark((c) => cfg.suits.includes(c.suit))
+        break
+
+      case 'personalGridShape': {
+        const gridRanks = side === 1 ? extras.gridRanks1 : extras.gridRanks2
+        mark((c) => (gridRanks ?? []).includes(c.rank))
+        break
+      }
+
       case 'personalCalledRank': {
         const called = side === 1 ? extras.calledRank1 : extras.calledRank2
         mark((c) => c.rank === called)

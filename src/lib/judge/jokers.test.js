@@ -24,6 +24,39 @@ describe('resolveWildness', () => {
     expect(wild).toEqual([false, true, true])
   })
 
+  it('personalHighest marks the highest rank and any duplicate of it (Upar Neeche)', () => {
+    const cards = [card('9', 'S'), card('K', 'D'), card('K', 'C')]
+    const wild = resolveWildness(cards, [{ source: 'personalHighest' }])
+    expect(wild).toEqual([false, true, true])
+  })
+
+  it('personalLowest and personalHighest combine (Upar Neeche), leaving only the middle card natural', () => {
+    const cards = [card('9', 'S'), card('4', 'D'), card('K', 'C')]
+    const wild = resolveWildness(cards, [{ source: 'personalLowest' }, { source: 'personalHighest' }])
+    expect(wild).toEqual([false, true, true])
+  })
+
+  it('fixedSuits marks every card of the configured suits regardless of rank (1942 A Love Story)', () => {
+    const cards = [card('9', 'H'), card('4', 'D'), card('K', 'H')]
+    const wild = resolveWildness(cards, [{ source: 'fixedSuits', suits: ['H'] }])
+    expect(wild).toEqual([true, false, true])
+  })
+
+  it('personalGridShape (Shun Chekdi): each side reads its own chosen grid ranks', () => {
+    const cards = [card('9', 'S'), card('4', 'D'), card('K', 'C')]
+    const extras = { gridRanks1: ['9', '2', '3', '5', '7'], gridRanks2: ['K', '6', '8', '10', 'Q'] }
+    expect(resolveWildness(cards, [{ source: 'personalGridShape' }], extras, 1)).toEqual([
+      true,
+      false,
+      false,
+    ])
+    expect(resolveWildness(cards, [{ source: 'personalGridShape' }], extras, 2)).toEqual([
+      false,
+      false,
+      true,
+    ])
+  })
+
   it('conditionalPair only fires with a natural pair, wilding just the odd card out (Jodi Joker)', () => {
     const withPair = resolveWildness(
       [card('9', 'S'), card('9', 'D'), card('K', 'C')],

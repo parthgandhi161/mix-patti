@@ -211,3 +211,25 @@ describe('Muflis, full end-to-end inversion', () => {
     expect(result.decidedBy).toBe('category')
   })
 })
+
+describe('Antim Faisla (colour-decides)', () => {
+  it('a red flip keeps standard ranking - the objectively stronger hand wins', () => {
+    const result = judgeHands({
+      variation: variation({ ranking: 'colour-decides' }),
+      hand1: [card('2', 'S'), card('2', 'H'), card('2', 'D')], // trail
+      hand2: [card('K', 'S'), card('9', 'D'), card('4', 'C')], // high card
+      extras: { flippedColour: 'red' },
+    })
+    expect(result.winner).toBe(1)
+  })
+
+  it('a black flip inverts to Muflis - the same trail now loses', () => {
+    const result = judgeHands({
+      variation: variation({ ranking: 'colour-decides' }),
+      hand1: [card('2', 'S'), card('2', 'H'), card('2', 'D')], // trail - worst in Muflis
+      hand2: [card('K', 'S'), card('9', 'D'), card('4', 'C')], // high card - best in Muflis
+      extras: { flippedColour: 'black' },
+    })
+    expect(result.winner).toBe(2)
+  })
+})

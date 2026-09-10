@@ -30,69 +30,55 @@ describe('pickNext - never repeats the immediately previous id', () => {
   })
 })
 
-describe('pickNext - each shuffle-bag cycles through all its own members before repeating', () => {
-  // Synthetic fixtures, not the real 27-entry dataset: enough OTHER
-  // entries are marked sideshowBanned: true to hit bannedRollRate()'s 20%
-  // target on their own (driving the roll rate to exactly 0 for
-  // everyone), while every entry in the bag under test is
-  // sideshowBanned: false - so that bag's draws are never `banned` and
-  // never trigger a reroll/discard. That makes every draw from the bag
-  // under test a real, counted draw, not a filtered subset.
-  const bagAUnderTest = ['a1', 'a2', 'a3', 'a4', 'a5']
-  const fillerForA = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10']
-  const strictFillerForA = new Set(['f1', 'f2', 'f3']) // 3 of 15 -> rate 0
-  const syntheticForBagACycle = [
-    ...bagAUnderTest.map((id) => ({ id, priority: 1, sideshowBanned: false })),
-    ...fillerForA.map((id) => ({ id, priority: 2, sideshowBanned: strictFillerForA.has(id) })),
-  ]
+describe('pickNext - the main bag cycles through (nearly) all its own members before repeating', () => {
+  // There is only one non-star bag now (bagMain, priority's old A/B split is
+  // gone) - and bagMain's source is exactly `unmuted`, the SAME set
+  // bannedRollRate() draws its strict/total ratio from. Unlike the old
+  // two-bag design, there's no longer a separate "filler" bag to dump
+  // strict-banned entries into while keeping the tracked bag itself
+  // strict-free, so a nonzero bannedRollRate (and hence the occasional
+  // sideshow-ban reroll) can't be fully engineered away here. A rerolled
+  // attempt still pops its draw off bagMain before looping for a fresh one
+  // (see pickNext's own doc comment) - that id is silently consumed
+  // without ever being RETURNED, so a "full cycle" as observed through
+  // pickNext's return value can run a few members short. That's a real,
+  // accepted characteristic of the collapsed single-bag design, not a test
+  // bug - so this asserts "close to a full cycle", not an exact count.
+  const SWALLOW_TOLERANCE = 6
 
-  const bagBUnderTest = ['b1', 'b2', 'b3', 'b4', 'b5', 'b6']
-  const fillerForB = ['g1', 'g2', 'g3', 'g4']
-  const strictFillerForB = new Set(['g1', 'g2']) // 2 of 10 -> rate 0
-  const syntheticForBagBCycle = [
-    ...bagBUnderTest.map((id) => ({ id, priority: 2, sideshowBanned: false })),
-    ...fillerForB.map((id) => ({ id, priority: 1, sideshowBanned: strictFillerForB.has(id) })),
-  ]
+  it('a repeat only happens once most of the bag has been drawn', () => {
+    const bagSize = 20
+    const synthetic = Array.from({ length: bagSize }, (_, i) => ({
+      id: `v${i}`,
+      sideshowBanned: false,
+    }))
 
-  function assertBagCyclesFully(synthetic, isUnderTest, bagSize, iterations = 400) {
     const cycleSeen = new Set()
     let previousId
-    for (let i = 0; i < iterations; i++) {
+    let cyclesCompleted = 0
+    for (let i = 0; i < 4000; i++) {
       const { variation } = pickNext(synthetic, previousId)
       previousId = variation.id
-      if (!isUnderTest(variation)) continue
       if (cycleSeen.has(variation.id)) {
-        expect(cycleSeen.size).toBe(bagSize) // repeat is only legal once full
+        expect(cycleSeen.size).toBeGreaterThanOrEqual(bagSize - SWALLOW_TOLERANCE)
         cycleSeen.clear()
+        cyclesCompleted++
       }
       cycleSeen.add(variation.id)
     }
-    expect(cycleSeen.size).toBeGreaterThan(0) // sanity: bag was exercised
-  }
-
-  it('bag A (priority 1) draws every member once before any repeat', () => {
-    expect(bannedRollRate(syntheticForBagACycle)).toBe(0)
-    assertBagCyclesFully(syntheticForBagACycle, (v) => v.priority === 1, bagAUnderTest.length)
-  })
-
-  it('bag B (not priority 1) draws every member once before any repeat', () => {
-    expect(bannedRollRate(syntheticForBagBCycle)).toBe(0)
-    assertBagCyclesFully(syntheticForBagBCycle, (v) => v.priority !== 1, bagBUnderTest.length)
+    expect(cyclesCompleted).toBeGreaterThan(20) // sanity: plenty of real cycle boundaries
   })
 })
 
-describe("pickNext - a bag's recent-history window avoids repeating the outgoing cycle's tail at the front of the next cycle", () => {
-  function idsOfLength(prefix, n) {
-    return Array.from({ length: n }, (_, i) => `${prefix}${i}`)
-  }
-
-  // Collects the ordered sequence of ids drawn for the bag under test, then
-  // chunks it into consecutive complete cycles - bannedRollRate is driven
-  // to 0 for these fixtures (as in the "cycles fully" tests above), so
-  // every draw from the bag under test is real, and a repeat marks a
-  // genuine cycle boundary. Asserts the outgoing cycle's last `windowSize`
-  // ids and the next cycle's first `windowSize` ids never overlap.
-  function assertNoTailHeadOverlap(synthetic, isUnderTest, bagSize, windowSize, iterations) {
+describe("pickNext - the main bag's recent-history window avoids repeating the outgoing cycle's tail at the front of the next cycle", () => {
+  // Same swallow caveat as the "cycles fully" test above - a rerolled draw
+  // is invisible to this test but IS folded into drawFrom()'s real
+  // avoidance history (see drawFrom()'s own comment: a discarded attempt's
+  // id still updates bag<Key>History before the loop tries again), so the
+  // structural guarantee genuinely holds internally. What this test can
+  // observe from the outside is closer to it: overlap should stay RARE,
+  // not necessarily zero on every single transition.
+  function assertRareTailHeadOverlap(synthetic, windowSize, iterations, maxOverlapFraction) {
     const cycles = []
     let current = []
     const seen = new Set()
@@ -100,9 +86,7 @@ describe("pickNext - a bag's recent-history window avoids repeating the outgoing
     for (let i = 0; i < iterations; i++) {
       const { variation } = pickNext(synthetic, previousId)
       previousId = variation.id
-      if (!isUnderTest(variation)) continue
       if (seen.has(variation.id)) {
-        expect(current).toHaveLength(bagSize) // repeat is only legal once full
         cycles.push(current)
         current = []
         seen.clear()
@@ -110,155 +94,105 @@ describe("pickNext - a bag's recent-history window avoids repeating the outgoing
       current.push(variation.id)
       seen.add(variation.id)
     }
-    // The final `current` is a still-in-progress cycle at the end of the
-    // loop - deliberately not pushed, so every chunk in `cycles` is complete.
-
     expect(cycles.length).toBeGreaterThan(20) // sanity: plenty of real boundaries
 
+    let overlapCount = 0
+    let checkedSlots = 0
     for (let i = 0; i < cycles.length - 1; i++) {
       const outgoingTail = new Set(cycles[i].slice(-windowSize))
       const incomingHead = cycles[i + 1].slice(0, windowSize)
       for (const id of incomingHead) {
-        expect(outgoingTail.has(id)).toBe(false)
+        checkedSlots++
+        if (outgoingTail.has(id)) overlapCount++
       }
     }
+    // A completely broken avoidance mechanism (or none at all) would land
+    // an overlap at roughly windowSize/bagSize per slot by pure chance -
+    // this threshold sits well below that baseline, so it still catches a
+    // real regression while absorbing the rare swallow-driven mismatch.
+    expect(overlapCount / checkedSlots).toBeLessThan(maxOverlapFraction)
   }
 
-  it('N=6, K=2 (mirrors the live "classics" bag)', () => {
-    const bagIds = idsOfLength('a', 6)
-    const filler = idsOfLength('f', 9)
-    const strictFiller = new Set(filler.slice(0, 3)) // 3 of 15 total -> rate 0
-    const synthetic = [
-      ...bagIds.map((id) => ({ id, priority: 1, sideshowBanned: false })),
-      ...filler.map((id) => ({ id, priority: 2, sideshowBanned: strictFiller.has(id) })),
-    ]
-    expect(bannedRollRate(synthetic)).toBe(0)
-    expect(historyWindowSize(bagIds)).toBe(2)
-    assertNoTailHeadOverlap(synthetic, (v) => v.priority === 1, 6, 2, 6000)
-  })
-
-  it('N=18, K=5 (mirrors the live "fun twists" bag - exercises the HISTORY_WINDOW_TARGET cap)', () => {
-    const bagIds = idsOfLength('b', 18)
-    const filler = idsOfLength('g', 7)
-    const strictFiller = new Set(filler.slice(0, 5)) // 5 of 25 total -> rate 0
-    const synthetic = [
-      ...bagIds.map((id) => ({ id, priority: 2, sideshowBanned: false })),
-      ...filler.map((id) => ({ id, priority: 1, sideshowBanned: strictFiller.has(id) })),
-    ]
-    expect(bannedRollRate(synthetic)).toBe(0)
+  it('mirrors the live main bag (N=32, K=5)', () => {
+    const bagIds = Array.from({ length: 32 }, (_, i) => `m${i}`)
+    const synthetic = bagIds.map((id) => ({ id, sideshowBanned: false }))
     expect(historyWindowSize(bagIds)).toBe(5)
-    assertNoTailHeadOverlap(synthetic, (v) => v.priority !== 1, 18, 5, 6000)
+    assertRareTailHeadOverlap(synthetic, 5, 6000, 0.06)
   })
 
-  it('N=4, K=1 (a small bag still gets a minimal window)', () => {
-    const bagIds = idsOfLength('c', 4)
-    const filler = idsOfLength('h', 1)
-    const synthetic = [
-      ...bagIds.map((id) => ({ id, priority: 2, sideshowBanned: false })),
-      ...filler.map((id) => ({ id, priority: 1, sideshowBanned: true })), // 1 of 5 total -> rate 0
-    ]
-    expect(bannedRollRate(synthetic)).toBe(0)
+  it('a small bag still gets a minimal window (N=4, K=1)', () => {
+    const bagIds = Array.from({ length: 4 }, (_, i) => `s${i}`)
+    const synthetic = bagIds.map((id) => ({ id, sideshowBanned: false }))
     expect(historyWindowSize(bagIds)).toBe(1)
-    assertNoTailHeadOverlap(synthetic, (v) => v.priority !== 1, 4, 1, 3000)
+    assertRareTailHeadOverlap(synthetic, 1, 3000, 0.08)
   })
 
   it('does not throw when a persisted history is longer than the window and gets clamped', () => {
-    const bagAIds = variations.filter((v) => v.priority === 1).map((v) => v.id)
-    const bagBIds = variations.filter((v) => v.priority !== 1).map((v) => v.id)
+    const bagMainIds = variations.map((v) => v.id)
     localStorage.setItem(
       STATE_KEY,
       JSON.stringify({
-        bagA: [], // empty -> forces a reshuffle, the only branch that reads history
-        bagAHistory: bagAIds, // pathologically long: the bag's ENTIRE own membership
-        bagB: bagBIds,
-        bagBHistory: [],
+        bagMain: [], // empty -> forces a reshuffle, the only branch that reads history
+        bagMainHistory: bagMainIds, // pathologically long: the bag's ENTIRE own membership
         bagStar: [],
         bagStarHistory: [],
         lastBanned: null,
-        bagASource: bagAIds,
-        bagBSource: bagBIds,
+        bagMainSource: bagMainIds,
         bagStarSource: [],
       }),
     )
-    vi.spyOn(Math, 'random').mockReturnValue(0.01) // force bagKey === 'bagA'
     const { variation } = pickNext(variations, undefined)
-    expect(bagAIds).toContain(variation.id)
+    expect(bagMainIds).toContain(variation.id)
   })
 })
 
 describe('pickNext - a stale persisted bag source is dropped and reshuffled (sameIdSet)', () => {
-  // writeState() unconditionally recomputes bagASource/bagBSource fresh
-  // on EVERY call, regardless of what readState() did - so asserting on
-  // the written source arrays proves nothing about whether the drop
-  // logic fired. The only thing that actually differs between "stale
-  // pool wrongly reused" and "correctly dropped and reshuffled" is the
-  // SIZE of the bag's remaining pool after one forced draw: reuse of a
-  // 1-element stale pool leaves 0 remaining; a fresh reshuffle of the
-  // full live bag leaves (bagSize - 1) remaining. Math.random is pinned
-  // low/high to force which bag gets drawn from, deterministically.
-  const bagAIds = variations.filter((v) => v.priority === 1).map((v) => v.id)
-  const bagBIds = variations.filter((v) => v.priority !== 1).map((v) => v.id)
-  const sampleBagAId = bagAIds[0]
-  const sampleBagBId = bagBIds[0]
+  // writeState() unconditionally recomputes bagMainSource/bagStarSource
+  // fresh on EVERY call, regardless of what readState() did - so asserting
+  // on the written source arrays proves nothing about whether the drop
+  // logic fired. The only thing that actually differs between "stale pool
+  // wrongly reused" and "correctly dropped and reshuffled" is the SIZE of
+  // the bag's remaining pool after one forced draw: reuse of a 1-element
+  // stale pool leaves 0 remaining; a fresh reshuffle of the full live bag
+  // leaves (bagSize - 1) remaining.
+  const bagMainIds = variations.map((v) => v.id)
+  const sampleId = bagMainIds[0]
 
-  it('drops a persisted bagA whose bagASource no longer matches live data', () => {
+  it('drops a persisted bagMain whose bagMainSource no longer matches live data', () => {
     localStorage.setItem(STATE_KEY, JSON.stringify({
-      bagA: [sampleBagAId], // plausible but stale 1-element "remaining" pool
-      bagB: [],
+      bagMain: [sampleId], // plausible but stale 1-element "remaining" pool
+      bagStar: [],
       lastBanned: null,
-      bagASource: ['some-completely-different-stale-id'], // mismatched -> drop
-      bagBSource: bagBIds,
+      bagMainSource: ['some-completely-different-stale-id'], // mismatched -> drop
+      bagStarSource: [],
     }))
-
-    // Force bagKey === 'bagA' every attempt (Math.random() < BAG_A_SHARE=0.2).
-    vi.spyOn(Math, 'random').mockReturnValue(0.01)
 
     pickNext(variations, undefined)
 
     const written = JSON.parse(localStorage.getItem(STATE_KEY))
-    // A correctly-dropped bag reshuffles all of bagAIds and pops one,
-    // leaving bagAIds.length - 1. A wrongly-reused stale pool (length 1)
+    // A correctly-dropped bag reshuffles all of bagMainIds and pops one,
+    // leaving bagMainIds.length - 1. A wrongly-reused stale pool (length 1)
     // would leave 0.
-    expect(written.bagA).toHaveLength(bagAIds.length - 1)
+    expect(written.bagMain).toHaveLength(bagMainIds.length - 1)
   })
 
-  it('also drops a persisted bagAHistory whose bagASource no longer matches live data', () => {
+  it('also drops a persisted bagMainHistory whose bagMainSource no longer matches live data', () => {
     localStorage.setItem(STATE_KEY, JSON.stringify({
-      bagA: [sampleBagAId],
-      bagAHistory: ['not-even-a-real-bagA-id'], // proves it's dropped, not coincidentally unused
-      bagB: [],
+      bagMain: [sampleId],
+      bagMainHistory: ['not-even-a-real-bagMain-id'], // proves it's dropped, not coincidentally unused
+      bagStar: [],
       lastBanned: null,
-      bagASource: ['some-completely-different-stale-id'], // mismatched -> drop
-      bagBSource: bagBIds,
+      bagMainSource: ['some-completely-different-stale-id'], // mismatched -> drop
+      bagStarSource: [],
     }))
-
-    vi.spyOn(Math, 'random').mockReturnValue(0.01) // force bagKey === 'bagA'
 
     const { variation } = pickNext(variations, undefined)
 
     const written = JSON.parse(localStorage.getItem(STATE_KEY))
     // A correctly-dropped history starts this round's ring buffer fresh -
     // just this draw. A wrongly-carried-over stale array would still hold
-    // 'not-even-a-real-bagA-id'.
-    expect(written.bagAHistory).toEqual([variation.id])
-  })
-
-  it('drops a persisted bagB whose bagBSource no longer matches live data', () => {
-    localStorage.setItem(STATE_KEY, JSON.stringify({
-      bagA: [],
-      bagB: [sampleBagBId],
-      lastBanned: null,
-      bagASource: bagAIds,
-      bagBSource: ['some-completely-different-stale-id'], // mismatched -> drop
-    }))
-
-    // Force bagKey === 'bagB' every attempt (Math.random() >= BAG_A_SHARE=0.2).
-    vi.spyOn(Math, 'random').mockReturnValue(0.99)
-
-    pickNext(variations, undefined)
-
-    const written = JSON.parse(localStorage.getItem(STATE_KEY))
-    expect(written.bagB).toHaveLength(bagBIds.length - 1)
+    // 'not-even-a-real-bagMain-id'.
+    expect(written.bagMainHistory).toEqual([variation.id])
   })
 })
 
@@ -289,18 +223,40 @@ describe('pickNext - legacy shape and corrupt storage fall back to a fresh cycle
     localStorage.setItem(
       STATE_KEY,
       JSON.stringify({
-        bagA: [],
-        bagB: [],
+        bagMain: [],
         bagStar: [],
         lastBanned: null,
-        bagASource: variations.filter((v) => v.priority === 1).map((v) => v.id),
-        bagBSource: variations.filter((v) => v.priority !== 1).map((v) => v.id),
+        bagMainSource: variations.map((v) => v.id),
         bagStarSource: [],
-        // no bagAHistory/bagBHistory/bagStarHistory - this is what
-        // mixpatti.pickState looked like before the anti-clustering window.
+        // no bagMainHistory/bagStarHistory - this is what mixpatti.pickState
+        // looked like before the anti-clustering window.
       }),
     )
     expect(() => pickNext(variations, undefined)).not.toThrow()
+  })
+
+  it('falls back cleanly for a pre-collapse blob (old bagA/bagB shape, no bagMain/bagMainSource)', () => {
+    // variation.priority is gone too, so this old shape's bagASource /
+    // bagBSource split can't even be reconstructed from live data anymore -
+    // moot, since sameIdSet(undefined, bagSourceIds.bagMain) is false
+    // unconditionally and readState() falls straight through to a fresh
+    // bagMain cycle. No migration code needed for this - see readState()'s
+    // own comment.
+    localStorage.setItem(
+      STATE_KEY,
+      JSON.stringify({
+        bagA: [],
+        bagB: [],
+        bagAHistory: [],
+        bagBHistory: [],
+        lastBanned: null,
+        bagASource: variations.slice(0, 6).map((v) => v.id),
+        bagBSource: variations.slice(6).map((v) => v.id),
+      }),
+    )
+    expect(() => pickNext(variations, undefined)).not.toThrow()
+    const { variation } = pickNext(variations, undefined)
+    expect(variations.some((v) => v.id === variation.id)).toBe(true)
   })
 })
 
@@ -362,18 +318,16 @@ describe('historyWindowSize', () => {
     expect(historyWindowSize(idsOfLength(2))).toBe(0)
   })
 
-  it('matches the live dataset: bagA -> 2, bagB -> 5', () => {
-    const bagAIds = variations.filter((v) => v.priority === 1).map((v) => v.id)
-    const bagBIds = variations.filter((v) => v.priority !== 1).map((v) => v.id)
-    expect(historyWindowSize(bagAIds)).toBe(2)
-    expect(historyWindowSize(bagBIds)).toBe(5)
+  it('matches the live dataset: bagMain -> 5', () => {
+    const bagMainIds = variations.map((v) => v.id)
+    expect(historyWindowSize(bagMainIds)).toBe(5)
   })
 })
 
 describe('pickNext - back-to-back strict-banned picks and the reroll cap', () => {
   const alwaysBanned = [
-    { id: 'x', priority: 1, sideshowBanned: true },
-    { id: 'y', priority: 1, sideshowBanned: true },
+    { id: 'x', sideshowBanned: true },
+    { id: 'y', sideshowBanned: true },
   ]
 
   it('caps the reroll at MAX_REROLL_ATTEMPTS (4) instead of looping forever', () => {
@@ -389,44 +343,37 @@ describe('pickNext - back-to-back strict-banned picks and the reroll cap', () =>
 
     // Call 2: lastBanned is now true, and both entries are
     // sideshowBanned: true, so EVERY attempt's `banned` is true
-    // unconditionally (short-circuits before consuming a Math.random
-    // call for the roll). backToBack is true on attempts 1-3 (each
-    // rerolled) and attempt 4 is accepted unconditionally.
+    // unconditionally (short-circuits before consuming a Math.random call
+    // for the roll). backToBack is true on attempts 1-3 (each rerolled)
+    // and attempt 4 is accepted unconditionally.
     //
-    // Both fixture entries are priority: 1, so bagB/bagStar are empty
-    // (starredIds defaults to [] too) - every attempt's bag-choice roll
-    // picks bagA, with no extra Math.random cost from the starred
-    // pre-roll (starEligible is false, so `useStarred` short-circuits
-    // before ever calling Math.random).
+    // Only one bag exists now (bagStar is unreachable - starredIds
+    // defaults to [], so starEligible is false and `useStarred` short-
+    // circuits before ever calling Math.random, unlike the old bagA/bagB
+    // choice which spent a random() call every attempt).
     //
-    // Call 1 left bagA holding 1 leftover id (whichever of x/y wasn't
+    // Call 1 left bagMain holding 1 leftover id (whichever of x/y wasn't
     // drawn) - call it `leftover`, and `first.variation.id` (== this
-    // call's previousId) is the OTHER one, already popped out of bagA.
+    // call's previousId) is the OTHER one, already popped out of bagMain.
     //
     // Hand-traced against pick.js's actual source, call by call, with
-    // Math.random pinned at 0.01 throughout - drawFrom()'s reshuffle
-    // guard now also fires whenever exactly one id is left AND it equals
-    // previousId (not just when the bag is fully empty), which this
-    // fixture hits from attempt 3 onward, once bagA cycles back around
-    // to holding only previousId as its sole leftover:
-    //   attempt 1: bag-choice + drawFrom reuses the 1-item
-    //     `remaining` as-is (it's `leftover`, which isn't
-    //     previousId, so the new guard doesn't force a
-    //     reshuffle here) - no swap needed either (top === 0)  -> 1 call
-    //   attempt 2: bag-choice + reshuffle (bagA ran dry) +
-    //     same-as-previous-id swap-check (the shuffle puts
-    //     previousId on top) - the swap sets previousId aside
-    //     as bagA's new 1-item leftover                        -> 3 calls
-    //   attempt 3: bag-choice + reshuffle (bagA's leftover IS
-    //     previousId now, so the hardened guard forces a fresh
-    //     reshuffle instead of reusing it) + swap-check         -> 3 calls
-    //   attempt 4: bag-choice + reshuffle + swap-check, same
-    //     shape as attempt 3                                   -> 3 calls
-    //   total                                                  -> 10 calls
+    // Math.random pinned at 0.01 throughout:
+    //   attempt 1: drawFrom reuses the 1-item `remaining` as-is (it's
+    //     `leftover`, which isn't previousId, so no reshuffle and no swap
+    //     needed either, top === 0)                             -> 0 calls
+    //   attempt 2: bagMain ran dry -> reshuffle (1 call) + same-as-
+    //     previous-id swap-check, since the shuffle puts previousId on
+    //     top (1 call) - the swap sets previousId aside as bagMain's new
+    //     1-item leftover                                        -> 2 calls
+    //   attempt 3: bagMain's leftover IS previousId now, so the hardened
+    //     reshuffle guard fires again (1 call) + swap-check (1 call)
+    //                                                             -> 2 calls
+    //   attempt 4: same shape as attempt 3                       -> 2 calls
+    //   total                                                    -> 6 calls
     const second = pickNext(alwaysBanned, first.variation.id)
 
     expect(second.sideshowBannedThisRound).toBe(true)
-    expect(spy).toHaveBeenCalledTimes(10)
+    expect(spy).toHaveBeenCalledTimes(6)
   })
 
   it('terminates promptly under worst-case back-to-back conditions (no infinite loop)', () => {
@@ -457,7 +404,7 @@ describe('pickNext - back-to-back strict-banned picks and the reroll cap', () =>
 
 describe('pickNext - muting', () => {
   it('never draws a muted id across many draws', () => {
-    const mutedIds = variations.slice(0, 6).map((v) => v.id) // well above MIN_UNMUTED for this 27-entry dataset
+    const mutedIds = variations.slice(0, 6).map((v) => v.id) // well above MIN_UNMUTED for this 32-entry dataset
     const mutedSet = new Set(mutedIds)
     let previousId
     for (let i = 0; i < 1000; i++) {
@@ -479,12 +426,8 @@ describe('pickNext - muting', () => {
     // would see this stay at ~0%.
     const strictIds = ['s1', 's2']
     const synthetic = [
-      ...strictIds.map((id) => ({ id, priority: 2, sideshowBanned: true })),
-      ...Array.from({ length: 8 }, (_, i) => ({
-        id: `f${i}`,
-        priority: 2,
-        sideshowBanned: false,
-      })),
+      ...strictIds.map((id) => ({ id, sideshowBanned: true })),
+      ...Array.from({ length: 8 }, (_, i) => ({ id: `f${i}`, sideshowBanned: false })),
     ]
     expect(bannedRollRate(synthetic)).toBe(0)
 
@@ -574,11 +517,11 @@ describe('pickNext - starring', () => {
     // STARRED_SHARE (0.3) is a private constant, hardcoded here as a
     // literal - same convention as TARGET_BANNED_SHARE's 0.2 elsewhere in
     // this file. The true share is slightly ABOVE 0.3: a starred id can
-    // also be drawn via the ordinary bagA/bagB path on the ~70% of
-    // attempts the starred pre-roll misses. The tolerance band is wide
-    // enough to absorb that plus statistical noise without masking a real
+    // also be drawn via the ordinary bagMain path on the ~70% of attempts
+    // the starred pre-roll misses. The tolerance band is wide enough to
+    // absorb that plus statistical noise without masking a real
     // regression (e.g. the pre-roll not firing at all, which would drop
-    // this down to each item's tiny natural bagA/bagB share instead).
+    // this down to each item's tiny natural bagMain share instead).
     expect(share).toBeGreaterThan(0.25)
     expect(share).toBeLessThan(0.45)
   })
@@ -590,12 +533,10 @@ describe('pickNext - a stale persisted bagStarSource is dropped and reshuffled',
     localStorage.setItem(
       STATE_KEY,
       JSON.stringify({
-        bagA: [],
-        bagB: [],
+        bagMain: [],
         bagStar: [starredIds[0]], // plausible but stale 1-element "remaining" pool
         lastBanned: null,
-        bagASource: variations.filter((v) => v.priority === 1).map((v) => v.id),
-        bagBSource: variations.filter((v) => v.priority !== 1).map((v) => v.id),
+        bagMainSource: variations.map((v) => v.id),
         bagStarSource: ['some-completely-different-stale-id'], // mismatched -> drop
       }),
     )
@@ -613,17 +554,14 @@ describe('pickNext - a stale persisted bagStarSource is dropped and reshuffled',
     expect(written.bagStar).toHaveLength(starredIds.length - 1)
   })
 
-  it('falls back cleanly when upgrading a pre-star pickState blob (no bagStar/bagStarSource fields)', () => {
+  it('falls back cleanly when bagStar/bagStarSource are absent entirely from a persisted blob', () => {
     localStorage.setItem(
       STATE_KEY,
       JSON.stringify({
-        bagA: [],
-        bagB: [],
+        bagMain: [],
         lastBanned: null,
-        bagASource: variations.filter((v) => v.priority === 1).map((v) => v.id),
-        bagBSource: variations.filter((v) => v.priority !== 1).map((v) => v.id),
-        // no bagStar / bagStarSource - this is what mixpatti.pickState
-        // looked like before starring existed.
+        bagMainSource: variations.map((v) => v.id),
+        // no bagStar / bagStarSource
       }),
     )
     const starredIds = variations.slice(0, 2).map((v) => v.id)

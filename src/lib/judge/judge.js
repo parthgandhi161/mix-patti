@@ -215,7 +215,9 @@ export function judgeHands({ variation, hand1, hand2, extras = {} }) {
     }
   }
 
-  const invert = judge.ranking === 'muflis'
+  const invert =
+    judge.ranking === 'muflis' ||
+    (judge.ranking === 'colour-decides' && extras.flippedColour === 'black')
   const comparison = compareReadings(reading1, reading2, { invert })
   let winner = comparison.result > 0 ? 1 : comparison.result < 0 ? 2 : null
   let decidedBy = comparison.decidedBy

@@ -2,13 +2,6 @@ import { getStorageJSON, setStorageJSON } from './storage'
 
 const STATE_KEY = 'mixpatti.pickState'
 
-// Bag A (priority 1, the classics) is drawn a fifth of the time; bag B
-// (priority 2, the "fun" twists) the rest. Two independent shuffle-bags -
-// each cycles through every one of its own members before repeating any -
-// rather than one shared pool, so the classics stay a rare treat instead of
-// drowning in the larger set.
-const BAG_A_SHARE = 0.2
-
 // Target share of ROUNDS (not entries) that land "sideshow banned".
 // variations.json marks a couple of entries sideshowBanned: true because the
 // mechanic makes a sideshow nonsensical - non-negotiable. Everything else
@@ -23,20 +16,18 @@ const TARGET_BANNED_SHARE = 0.2
 const MAX_REROLL_ATTEMPTS = 4
 
 // Starred twists get a flat boost independent of how many are starred -
-// same fixed-fraction design as BAG_A_SHARE, so starring one twist vs five
-// changes which starred twist comes up, not how often "some starred twist"
-// does. Rolled as a PRE-roll ahead of the bagA/bagB choice below, not a
-// third slice of that split - a miss falls through to the bagA/bagB roll
-// exactly as it ran before starring existed, so starring something can't
-// dilute the classics/fun-twist ratio.
+// starring one twist vs five changes which starred twist comes up, not how
+// often "some starred twist" does. Rolled as a PRE-roll ahead of the
+// bagMain fallback below, not a slice carved out of it - a miss falls
+// through to the ordinary bagMain draw exactly as it ran before starring
+// existed, so starring something can't dilute the rest of the pool.
 const STARRED_SHARE = 0.3
 
 // Below this many unmuted variations, honoring the mute set at all would
-// starve drawFrom() down toward the empty-pool case (see the [...bagA,
-// ...bagB] fallback in pickNext()) - so it's ignored outright instead, not
-// partially. useVariationPrefs.js imports this same constant so the UI can
-// grey out the mute control at the identical floor before this backstop
-// ever needs to fire.
+// starve drawFrom() down toward the empty-pool case - so it's ignored
+// outright instead, not partially. useVariationPrefs.js imports this same
+// constant so the UI can grey out the mute control at the identical floor
+// before this backstop ever needs to fire.
 export const MIN_UNMUTED = 2
 
 // Target size, before scaling down for small bags, of the "keep these out
@@ -49,18 +40,21 @@ const HISTORY_WINDOW_TARGET = 5
  * comment, is actually the END of the freshly shuffled array, since draws
  * pop from list[top] downward.
  *
- * A flat HISTORY_WINDOW_TARGET can't apply to every bag: bagA (the
- * classics) has only 6 entries live today, and reserving 5 of them as
- * "can't come up yet" would leave a single id to fill 5 draw slots -
- * infeasible. Scaling with sourceIds.length instead - floor(N / 3) capped
- * at the target - guarantees N - 2*windowSize >= windowSize, i.e. at least
- * as many non-avoided ids remain as the window itself needs to fill with
- * swap candidates (see avoidRecentInFront()). Same floor-not-gate idea as
+ * A flat HISTORY_WINDOW_TARGET can't apply to every bag: bagStar (the
+ * starred ids) can be very small - sometimes just the starEligible floor of
+ * 2 members - where reserving a big chunk of it as "can't come up yet"
+ * would leave nothing to fill the remaining draw slots. Scaling with
+ * sourceIds.length instead - floor(N / 3) capped at the target -
+ * guarantees N - 2*windowSize >= windowSize, i.e. at least as many
+ * non-avoided ids remain as the window itself needs to fill with swap
+ * candidates (see avoidRecentInFront()). Same floor-not-gate idea as
  * MIN_UNMUTED/starEligible - just a continuously scaled size instead of a
  * yes/no cutoff, which is also why bagStar needs no special case: at its
  * starEligible floor of 2 members this already evaluates to 0 (no
  * avoidance at all), which is correct - a 2-member bag has no room to
- * spare for one.
+ * spare for one. bagMain, the full unmuted pool (32 entries live today),
+ * sits comfortably above the cap and always gets the full
+ * HISTORY_WINDOW_TARGET window.
  */
 export function historyWindowSize(sourceIds) {
   return Math.min(HISTORY_WINDOW_TARGET, Math.floor(sourceIds.length / 3))
@@ -111,7 +105,7 @@ function effectiveMutedSet(variations, mutedIds) {
 /**
  * A persisted bag's `remaining` pool only means anything relative to the
  * exact set of ids it was shuffled from. If variations.json has since
- * added, removed, or re-prioritised anything, that set no longer matches
+ * added, removed, or re-muted/starred anything, that set no longer matches
  * bagSourceIds - and a stale pool can't tell "this id is brand new" apart
  * from "this id was already drawn earlier this cycle", since both are
  * simply absent from `remaining`. Rather than leave newly-added
@@ -124,25 +118,27 @@ function effectiveMutedSet(variations, mutedIds) {
  * bag's recent-draw history (bag<Key>History, see historyWindowSize()) is
  * dropped on the exact same mismatch - a history of draws from a bag whose
  * membership just changed is stale in the same way `remaining` is.
+ *
+ * A previously-persisted mixpatti.pickState still has the OLD bagA/bagB
+ * shape, not bagMain - it has no bagMainSource at all, so `sameIdSet`
+ * below (comparing against `undefined`) is false unconditionally, and this
+ * function falls through to a fresh bagMain cycle on the very next draw.
+ * No migration code needed for that; this read path already handles it.
  */
 function readState(bagSourceIds) {
   // `stored` fails this check (falls through to a fresh cycle below) for
   // anything that isn't a plain object - including `null` (nothing
   // persisted, or getStorageJSON swallowed a corrupt/unavailable read)
   // and a bare array (the old mixpatti.unseenIds single-array shape,
-  // which has no .bagA/.bagB).
+  // which has no .bagMain/.bagStar).
   const stored = getStorageJSON(STATE_KEY, null)
   if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
-    const bagAFresh = sameIdSet(stored.bagASource, bagSourceIds.bagA)
-    const bagBFresh = sameIdSet(stored.bagBSource, bagSourceIds.bagB)
+    const bagMainFresh = sameIdSet(stored.bagMainSource, bagSourceIds.bagMain)
     const bagStarFresh = sameIdSet(stored.bagStarSource, bagSourceIds.bagStar)
     return {
-      bagA: bagAFresh && Array.isArray(stored.bagA) ? stored.bagA : [],
-      bagAHistory:
-        bagAFresh && Array.isArray(stored.bagAHistory) ? stored.bagAHistory : [],
-      bagB: bagBFresh && Array.isArray(stored.bagB) ? stored.bagB : [],
-      bagBHistory:
-        bagBFresh && Array.isArray(stored.bagBHistory) ? stored.bagBHistory : [],
+      bagMain: bagMainFresh && Array.isArray(stored.bagMain) ? stored.bagMain : [],
+      bagMainHistory:
+        bagMainFresh && Array.isArray(stored.bagMainHistory) ? stored.bagMainHistory : [],
       bagStar: bagStarFresh && Array.isArray(stored.bagStar) ? stored.bagStar : [],
       bagStarHistory:
         bagStarFresh && Array.isArray(stored.bagStarHistory) ? stored.bagStarHistory : [],
@@ -151,10 +147,8 @@ function readState(bagSourceIds) {
     }
   }
   return {
-    bagA: [],
-    bagAHistory: [],
-    bagB: [],
-    bagBHistory: [],
+    bagMain: [],
+    bagMainHistory: [],
     bagStar: [],
     bagStarHistory: [],
     lastBanned: null,
@@ -164,8 +158,7 @@ function readState(bagSourceIds) {
 function writeState(state, bagSourceIds) {
   setStorageJSON(STATE_KEY, {
     ...state,
-    bagASource: bagSourceIds.bagA,
-    bagBSource: bagSourceIds.bagB,
+    bagMainSource: bagSourceIds.bagMain,
     bagStarSource: bagSourceIds.bagStar,
   })
 }
@@ -220,23 +213,24 @@ function avoidRecentInFront(list, avoidIds, windowSize) {
  *
  * A fresh shuffle can coincidentally deal the same id that just finished the
  * previous cycle right back out on top - and since a bag only ever loses the
- * id it hands out, that refill instant is the ONLY place a repeat can sneak
- * in FOR A BAG TRACKED IN ISOLATION (any id still sitting in a bag was, by
- * definition, not the one *this bag* just handed out). That reasoning holds
- * for bagA/bagB, which are disjoint by construction - but pickNext()'s
- * starred bag deliberately OVERLAPS both of them, so `previousId` CAN be
- * sitting un-drawn in the starred bag's own pool even though it was shown
- * via bagA or bagB last round. If the starred bag happens to be down to
- * exactly that one id, the `top > 0` swap guard below has nothing to swap
- * with and would otherwise repeat it. Treating "one id left, and it's
- * previousId" the same as "no ids left" closes that: a fresh reshuffle of
- * `sourceIds` always has an alternative, PROVIDED sourceIds itself has at
- * least 2 members - which is exactly why pickNext() only ever calls this
- * for the starred bag when starEligible (see there). This is a no-op for
- * bagA/bagB in real play (their sizes never realistically drain to exactly
- * previousId mid-cycle), but is left generic here rather than starred-bag-
- * specific: drawFrom() has no idea which bag it's serving, by design, and a
- * shared, simple implementation is worth more than a special case.
+ * id it hands out, that refill instant would be the ONLY place a repeat
+ * could sneak in IF a bag were tracked in total isolation. But bagMain and
+ * bagStar are NOT disjoint - bagStar's ids are a subset of bagMain's, drawn
+ * from deliberately so a starred twist is reachable via either path (that's
+ * the boost, not a separate exclusive group) - so `previousId` can be
+ * sitting un-drawn in one bag's pool even though it was just handed out by
+ * the OTHER. There is no "disjoint by construction" argument to lean on
+ * here at all, for either bag: drawFrom()'s previousId swap below - and its
+ * hardening against a single leftover id equalling previousId - is the ONLY
+ * thing that ever prevents a repeat, full stop. If the bag in play happens
+ * to be down to exactly one id, and it's previousId, the `top > 0` swap
+ * guard has nothing to swap with and would otherwise repeat it. Treating
+ * "one id left, and it's previousId" the same as "no ids left" closes that:
+ * a fresh reshuffle of `sourceIds` always has an alternative, PROVIDED
+ * sourceIds itself has at least 2 members - which is exactly why pickNext()
+ * only ever calls this for bagStar when starEligible (see there); bagMain
+ * always has far more than 2 members in real play, so this branch is a
+ * defensive guarantee there rather than something normally exercised.
  *
  * The swap itself still runs unconditionally rather than only at a
  * detected refill boundary: it's cheap, and it also covers a hand-edited or
@@ -279,31 +273,27 @@ function drawFrom(remaining, sourceIds, previousId, history = []) {
 /**
  * Pick the next variation, plus whether sideshow is banned this round.
  *
- * Three shuffle-bags feed the draw: bagA (priority 1) and bagB (everything
- * else, BAG_A_SHARE) stay mutually exclusive by construction (priority is a
- * strict A/not-A split - anything other than exactly `1` counts as bag B,
- * so a missing/bad field degrades gracefully instead of throwing), plus
- * bagStar - a pre-roll pool of starred ids (STARRED_SHARE), rolled BEFORE
- * the bagA/bagB choice each attempt. Unlike bagA/bagB, bagStar's ids
- * deliberately OVERLAP them: a starred priority-1 twist lives in both bagA
- * and bagStar at once, so it's reachable via either path - that's the
- * boost, not a fourth exclusive group.
+ * Two shuffle-bags feed the draw: bagMain (every unmuted id) is the
+ * default, and bagStar - a pre-roll pool of starred unmuted ids
+ * (STARRED_SHARE), rolled BEFORE falling through to bagMain each attempt -
+ * gives starred twists a boost. bagStar's ids deliberately OVERLAP
+ * bagMain's: a starred twist lives in both at once, so it's reachable via
+ * either path - that's the boost, not a separate exclusive group. There
+ * used to be a second exclusive bag here (the "classics" vs "fun twists"
+ * split, drawn by variation.priority) - that concept is gone along with
+ * the priority field itself; every variation is equal weight now, and
+ * bagMain is simply the whole unmuted pool.
  *
- * Because bagA/bagB stay disjoint, "never the same twist twice in a row"
- * still holds between just those two for free - `previousId` drawn from one
- * can never coincide with an id still sitting in the other. That reasoning
- * does NOT extend to bagStar, which can hand back an id that was just shown
- * via bagA or bagB. What actually prevents the repeat, for ANY bag, is
- * drawFrom()'s unconditional previousId-swap - and its hardening against a
- * single leftover id equalling previousId (see drawFrom()'s own comment).
- * The one gap that hardening can't close is a bag with only ONE id total -
- * nothing to ever swap to - so the starred pre-roll is skipped outright
- * (starEligible below) unless at least 2 unmuted starred ids exist. A lone
- * starred twist just never gets the boost; it's still reachable normally
- * through bagA/bagB.
+ * Because there is now only ONE non-star bag, there is no "two disjoint
+ * bags can't hand back the same id" argument to lean on for the
+ * never-repeats-immediately guarantee, and there never really was one for
+ * bagStar either (see drawFrom()'s own comment). drawFrom()'s unconditional
+ * previousId-swap - and its hardening against a single leftover id
+ * equalling previousId - is the ONLY thing that prevents an immediate
+ * repeat, for both bags, always.
  *
- * Muting: `mutedIds` are dropped from bagA/bagB/bagStar's source id lists
- * up front (see effectiveMutedSet(), which also holds the floor below which
+ * Muting: `mutedIds` are dropped from bagMain/bagStar's source id lists up
+ * front (see effectiveMutedSet(), which also holds the floor below which
  * muting is ignored outright), and bannedRollRate() is computed over that
  * same unmuted list so the ~20% target doesn't drift as entries get muted.
  * Changing which ids are muted OR starred changes bagSourceIds.bag* -
@@ -320,8 +310,12 @@ function drawFrom(remaining, sourceIds, previousId, history = []) {
  * so it is best-effort - with MAX_REROLL_ATTEMPTS capped, two genuinely
  * strict-banned entries CAN still land back-to-back in the unlucky case
  * where every attempt keeps re-drawing a banned entry. With only ~2 strict
- * entries in 25 and a ~20% overall banned rate, that chain is vanishingly
- * rare in practice.
+ * entries in 32 and a ~20% overall banned rate, that chain is vanishingly
+ * rare in practice. A rerolled (discarded) attempt still pops its draw off
+ * whichever bag served it before looping to try again - that bag's cycle
+ * quietly runs one draw short of a full round-trip through its own
+ * membership when this fires, which is the tradeoff for a reroll not being
+ * a hard guarantee.
  *
  * Each bag also carries its own bag<Key>History (see historyWindowSize())
  * so that when IT reshuffles, the new cycle's first few draws avoid the
@@ -340,8 +334,7 @@ export function pickNext(variations, previousId, { mutedIds = [], starredIds = [
   const starredSet = new Set(starredIds)
   const unmuted = variations.filter((v) => !mutedSet.has(v.id))
   const bagSourceIds = {
-    bagA: unmuted.filter((v) => v.priority === 1).map((v) => v.id),
-    bagB: unmuted.filter((v) => v.priority !== 1).map((v) => v.id),
+    bagMain: unmuted.map((v) => v.id),
     bagStar: unmuted.filter((v) => starredSet.has(v.id)).map((v) => v.id),
   }
   const starEligible = bagSourceIds.bagStar.length >= 2
@@ -352,21 +345,10 @@ export function pickNext(variations, previousId, { mutedIds = [], starredIds = [
   let banned
   for (let attempt = 1; attempt <= MAX_REROLL_ATTEMPTS; attempt++) {
     const useStarred = starEligible && Math.random() < STARRED_SHARE
-    const bagKey = useStarred ? 'bagStar' : Math.random() < BAG_A_SHARE ? 'bagA' : 'bagB'
-    const sourceIds =
-      bagKey === 'bagStar' || bagSourceIds[bagKey].length > 0
-        ? bagSourceIds[bagKey]
-        : [...bagSourceIds.bagA, ...bagSourceIds.bagB] // defensive: muting
-          // (or, previously, only a future data edit) emptying a priority
-          // group falls back to the full unmuted list rather than drawing
-          // `undefined`. Never reached for bagStar - it's only ever chosen
-          // when starEligible, which guarantees it's non-empty. Side
-          // effect: historyWindowSize() sees this union's (larger) size
-          // rather than the bag's true membership in this rare path -
-          // harmless, still capped safely, just not "normal".
+    const bagKey = useStarred ? 'bagStar' : 'bagMain'
     const { id, rest, history } = drawFrom(
       state[bagKey],
-      sourceIds,
+      bagSourceIds[bagKey],
       previousId,
       state[`${bagKey}History`],
     )

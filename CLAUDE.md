@@ -155,10 +155,14 @@ conventions below for where it goes.
   not `mixpatti.muted` - that key and `useMuted.js` already mean *audio*
   mute; the two concepts share an English word, not a key or a hook).
   `pick.js`'s `pickNext()` takes an optional third argument,
-  `{ mutedIds, starredIds }`, and adds a third shuffle-bag (`bagStar`) on
-  top of the existing bagA/bagB split - see that file's own JSDoc for the
-  overlap hazard this introduces (a starred bag, unlike bagA/bagB, is not
-  disjoint from them) and how `drawFrom()` was hardened to close it. A
+  `{ mutedIds, starredIds }`. Every variation is equal weight (the old
+  priority-based bagA/bagB split - a "classics" bag drawn a fifth of the
+  time vs everything else - is gone along with the `priority` field
+  itself); the only two shuffle-bags left are `bagMain` (all unmuted ids)
+  and `bagStar`, a pre-roll pool of starred unmuted ids layered on top -
+  see that file's own JSDoc for the overlap hazard this introduces
+  (`bagStar`'s ids are a subset of `bagMain`'s, not disjoint from it) and
+  how `drawFrom()` was hardened to close it. A
   floor (`MIN_UNMUTED`, exported from `pick.js`) stops muting from ever
   starving the draw to nothing - the UI greys out the mute control at
   that exact number (`useVariationPrefs.js`'s `canToggleMute`), and
@@ -168,7 +172,7 @@ conventions below for where it goes.
   centred (see the `--band-under` note below for why not
   `.stage__under`); BrowseSheet's live per-row plus an All/Starred/Muted
   filter above the list.
-- `src/data/variations.json` is the content: the 30 Teen Patti twists.
+- `src/data/variations.json` is the content: the 32 Teen Patti twists.
   Treat its schema as fixed unless the user asks to change it. When adding
   or removing entries, also check for two things that don't come from the
   schema: the hardcoded twist count in `Home.jsx`'s tagline and the
@@ -230,7 +234,7 @@ See the README's "Layout" section for the full file-by-file map.
   - `--band-under` reserves exactly **one** line of Result's badge pills.
     Their font/padding in `Result.css` and the terse `dealLabel` wording
     for table-card variations in `src/lib/summary.js` exist to keep the
-    widest case (deal + win + `★ Joker`, which 7 of the 30 variations
+    widest case (deal + win + `★ Joker`, which 7 of the 32 variations
     produce) on that one line. Widen the pills and they wrap into the
     buttons. To recheck this count after editing `variations.json`:
     `node -e "const d=require('./src/data/variations.json');console.log(d.filter(v=>v.tableCards>0&&v.joker!==null).length)"`.
